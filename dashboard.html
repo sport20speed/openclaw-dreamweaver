@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🌙 DreamWeaver 控制台 v1.0</title>
+<style>
+  :root {
+    --bg:#0a0a14; --panel:#111122; --border:#1e1e3a;
+    --purple:#8b5cf6; --purple-glow:rgba(139,92,246,0.3);
+    --gold:#fbbf24; --green:#10b981; --red:#ef4444; --blue:#3b82f6;
+    --text:#e2e8f0; --muted:#64748b; --font:system-ui,sans-serif;
+    --mono:'JetBrains Mono','Consolas',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+  #nebula{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.3}
+  body.dreaming #nebula{opacity:.6}
+
+  /* Layout */
+  .app{position:relative;z-index:1;display:flex;min-height:100vh}
+  .sidebar{width:340px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;overflow-y:auto}
+  .main{flex:1;min-width:0;overflow-y:auto;height:100vh;padding:0}
+
+  /* Sidebar sections */
+  .sec{padding:20px 24px;border-bottom:1px solid var(--border)}
+  .sec-title{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:12px}
+
+  /* Brand */
+  .brand{padding:24px 24px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border)}
+  .brand h1{font-size:20px;font-weight:700}
+  .moon-icon{width:36px;height:36px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#c4b5fd,var(--purple));box-shadow:0 0 20px var(--purple-glow);transition:all .6s}
+  body.dreaming .moon-icon{box-shadow:0 0 40px var(--purple-glow),0 0 80px rgba(139,92,246,0.2)}
+  body.completed .moon-icon{background:radial-gradient(circle at 35% 35%,#fde68a,var(--gold));box-shadow:0 0 20px rgba(251,191,36,0.3)}
+
+  /* Live status */
+  .round-num{font-size:36px;font-weight:800;letter-spacing:-1px;background:linear-gradient(135deg,#c4b5fd,var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .progress-wrap{margin-top:12px;height:4px;border-radius:2px;background:#1e1e3a;overflow:hidden}
+  .progress-fill{height:100%;border-radius:2px;background:var(--purple);transition:width .5s;box-shadow:0 0 8px var(--purple-glow)}
+
+  /* Trigger */
+  .sec input,.sec textarea,.sec select{width:100%;padding:10px 14px;border-radius:8px;font-size:13px;font-family:var(--font);border:1px solid var(--border);background:var(--bg);color:var(--text);outline:none;margin-bottom:8px;resize:vertical}
+  .sec input:focus,.sec textarea:focus,.sec select:focus{border-color:var(--purple);box-shadow:0 0 0 3px var(--purple-glow)}
+  .btn-row{display:flex;gap:8px}
+  .btn{flex:1;padding:10px 0;border-radius:8px;border:none;font-weight:600;font-size:13px;font-family:var(--font);cursor:pointer;transition:all .15s}
+  .btn-dream{background:var(--purple);color:#fff}.btn-dream:hover{background:#7c3aed}
+  .btn-stop{background:transparent;border:1px solid var(--red);color:var(--red)}.btn-stop:hover{background:rgba(239,68,68,0.1)}
+  .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--muted)}
+
+  /* Token / resource gauges */
+  .gauge-row{display:flex;gap:8px;margin-top:8px}
+  .gauge{flex:1;background:var(--bg);border-radius:8px;padding:10px 12px}
+  .gauge .label{font-size:11px;color:var(--muted);margin-bottom:4px}
+  .gauge .value{font-size:20px;font-weight:700}
+  .gauge .bar{height:4px;border-radius:2px;margin-top:6px;background:#1e1e3a;overflow:hidden}
+  .gauge .bar-fill{height:100%;border-radius:2px;transition:width .5s}
+
+  /* Dream list */
+  .dream-entry{padding:10px 12px;border-radius:8px;cursor:pointer;transition:.15s;display:flex;align-items:center;gap:10px;margin-bottom:2px;border:1px solid transparent}
+  .dream-entry:hover{background:rgba(139,92,246,0.06)}
+  .dream-entry.selected{background:rgba(139,92,246,0.12);border-color:rgba(139,92,246,0.3)}
+  .dream-entry .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .dream-entry .info{flex:1;min-width:0}
+  .dream-entry .motif{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .dream-entry .meta{font-size:11px;color:var(--muted);margin-top:2px}
+  .dream-entry .score{font-size:14px;font-weight:700;flex-shrink:0}
+
+  /* Filter bar */
+  .filter-bar{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}
+  .filter-bar button{padding:4px 10px;border-radius:12px;border:none;font-size:11px;cursor:pointer;background:#1e1e3a;color:var(--muted)}
+  .filter-bar button.active{background:var(--purple);color:#fff}
+
+  /* Tabs in sidebar */
+  .tabs{display:flex;border-bottom:1px solid var(--border)}
+  .tab{flex:1;padding:10px 0;border:none;background:transparent;color:var(--muted);font-size:13px;cursor:pointer;border-bottom:2px solid transparent;transition:.15s}
+  .tab.active{color:var(--text);border-bottom-color:var(--purple)}
+
+  /* Main content */
+  .welcome{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;height:100%;padding:40px}
+  .welcome .big{margin-bottom:20px;opacity:.5;filter:grayscale(.5)}
+  .welcome h2{font-size:28px;margin-bottom:8px}
+  .welcome p{color:var(--muted);max-width:480px;line-height:1.6;font-size:14px}
+
+  .detail{animation:fadeIn .3s}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  .detail{padding:32px 40px}
+  .detail h2{font-size:22px;margin-bottom:20px;line-height:1.4}
+  .meta-tags{display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap}
+  .meta-tags span{padding:4px 12px;border-radius:20px;font-size:12px;font-weight:500;background:rgba(139,92,246,0.1);color:#a78bfa;border:1px solid rgba(139,92,246,0.2)}
+  .meta-tags .tag-model{background:rgba(59,130,246,0.1);color:#60a5fa;border-color:rgba(59,130,246,0.2)}
+  .meta-tags .tag-obsidian{background:rgba(139,92,246,0.15);color:#c4b5fd;border-color:rgba(139,92,246,0.3);cursor:pointer}
+  .meta-tags .tag-obsidian:hover{background:rgba(139,92,246,0.25)}
+
+  .score-hero{display:flex;align-items:center;gap:16px;margin-bottom:28px;padding:20px;background:var(--panel);border-radius:12px;border:1px solid var(--border)}
+  .score-ring{width:72px;height:72px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;flex-shrink:0}
+  .score-stats{font-size:13px;color:var(--muted);line-height:1.8}
+
+  .chart-container{background:var(--panel);border-radius:12px;padding:20px;border:1px solid var(--border);margin-bottom:28px}
+  .chart-container canvas{width:100%}
+
+  .solution-box{background:var(--panel);border-radius:12px;padding:24px;border:1px solid var(--border);font-size:14px;line-height:1.75;font-family:var(--mono);max-height:500px;overflow:auto;white-space:pre-wrap;margin-bottom:20px}
+  .solution-box h1,.solution-box h2,.solution-box h3{color:#c4b5fd;margin:16px 0 8px}
+  .solution-box strong{color:#e2e8f0}
+
+  .action-bar{display:flex;gap:12px;margin-bottom:40px;flex-wrap:wrap}
+  .btn-act{padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;font-family:var(--font);cursor:pointer;border:none;transition:.15s}
+  .btn-apply{background:var(--green);color:#fff}
+  .btn-obsidian{background:transparent;border:1px solid #7c3aed;color:#c4b5fd}
+  .btn-obsidian:hover{background:rgba(139,92,246,0.1)}
+  .btn-challenge{background:transparent;border:1px solid var(--purple);color:var(--purple)}
+  .btn-export{background:transparent;border:1px solid var(--muted);color:var(--muted)}
+  .btn-delete{background:transparent;border:1px solid var(--red);color:var(--red)}
+
+  /* Settings form */
+  .setting-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid rgba(30,30,58,0.5)}
+  .setting-row label{font-size:13px;color:var(--text);flex:1}
+  .setting-row .hint{font-size:11px;color:var(--muted);margin-top:2px}
+  .setting-row input[type=text],.setting-row input[type=number]{width:130px;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:12px;text-align:right;outline:none}
+  .setting-row input[type=checkbox]{accent-color:var(--purple);transform:scale(1.2)}
+  .setting-row select{width:130px;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:12px;outline:none}
+
+  .toast{position:fixed;bottom:24px;right:24px;z-index:200;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:600;background:var(--green);color:#fff;animation:slideUp .3s;box-shadow:0 4px 20px rgba(0,0,0,.4)}
+  @keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;display:flex;align-items:center;justify-content:center}
+  .modal{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:28px;width:500px;max-width:90vw}
+  .modal h3{margin-bottom:12px}
+  .modal textarea{width:100%;height:120px;padding:12px;border-radius:8px;font-size:13px;font-family:var(--font);border:1px solid var(--border);background:var(--bg);color:var(--text);outline:none;resize:vertical}
+</style>
+</head>
+<body>
+<canvas id="nebula"></canvas>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="moon-icon"></div><h1>DreamWeaver</h1>
+    </div>
+
+    <div class="sec" id="liveStatus">
+      <div class="round-num" id="roundNum">—</div>
+      <div style="font-size:13px;color:var(--muted)" id="roundLabel">等待中</div>
+      <div style="font-size:13px;color:#a78bfa;margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="motifRunning"></div>
+      <div class="progress-wrap"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    </div>
+
+    <!-- Token & Resource gauges -->
+    <div class="sec">
+      <div class="sec-title">📊 用量监控</div>
+      <div class="gauge-row">
+        <div class="gauge">
+          <div class="label">Token 用量</div>
+          <div class="value" id="tokenUsed" style="color:var(--purple)">0</div>
+          <div class="bar"><div class="bar-fill" id="tokenBar" style="width:0%;background:var(--purple)"></div></div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px">限额 <span id="tokenLimit">100,000</span>/天</div>
+        </div>
+        <div class="gauge">
+          <div class="label">模型</div>
+          <div class="value" style="font-size:13px;color:var(--blue)" id="modelDisplay">DeepSeek V4</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:4px">云端 API</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabs: Log | Settings -->
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('log')" id="tabLog">📋 梦境日志</button>
+      <button class="tab" onclick="switchTab('settings')" id="tabSettings">⚙️ 设置</button>
+    </div>
+
+    <!-- LOG TAB -->
+    <div id="panelLog" style="flex:1;overflow-y:auto">
+      <div class="sec" style="border-bottom:none;padding-bottom:8px">
+        <div class="filter-bar">
+          <button class="active" onclick="setFilter('all',this)">全部</button>
+          <button onclick="setFilter('completed',this)">已完成</button>
+          <button onclick="setFilter('running',this)">进行中</button>
+          <button onclick="setFilter('applied',this)">已应用</button>
+          <button onclick="setFilter('interrupted',this)">已中断</button>
+        </div>
+        <div class="filter-bar">
+          <button class="active" onclick="setSort('created_at',this)">📅 日期</button>
+          <button onclick="setSort('best_score',this)">⭐ 评分</button>
+          <button onclick="setSort('iterations',this)">🔄 迭代</button>
+          <input type="text" placeholder="搜索母题..." id="searchInput" oninput="loadHistory()" style="width:100%;margin-top:6px;padding:8px 12px;font-size:12px">
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">共 <span id="dreamCount">0</span> 条记录</div>
+      </div>
+      <div id="dreamEntries" style="padding:4px 16px"></div>
+    </div>
+
+    <!-- SETTINGS TAB (hidden by default) -->
+    <div id="panelSettings" style="display:none;flex:1;overflow-y:auto;padding:0 24px">
+      <div class="sec" style="border-bottom:none;padding-left:0;padding-right:0">
+        <div class="sec-title">模型与 API 配置</div>
+        <div class="setting-row">
+          <label>启用云端 API<div class="hint">允许调用 DeepSeek API</div></label>
+          <input type="checkbox" id="cfg_cloud" checked onchange="updateCfg()">
+        </div>
+        <div class="setting-row">
+          <label>云端模型<div class="hint">用于 Genius/Critic/Refiner/Mutator</div></label>
+          <select id="cfg_model" onchange="updateCfg()">
+            <option value="deepseek-chat">DeepSeek V4 Pro</option>
+            <option value="deepseek-reasoner">DeepSeek R1 (推理)</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <label>Judge 模型<div class="hint">建议始终使用云端高精度模型</div></label>
+          <select id="cfg_judge_model" onchange="updateCfg()">
+            <option value="deepseek-chat">DeepSeek V4 Pro</option>
+            <option value="deepseek-reasoner">DeepSeek R1 (推理)</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <label>本地模型 (Ollama)<div class="hint">云端关闭时使用，如 deepseek-coder:33b</div></label>
+          <input type="text" id="cfg_local_model" value="deepseek-coder:33b" onchange="updateCfg()">
+        </div>
+        <div class="setting-row">
+          <label>每日 Token 上限<div class="hint">防止费用失控</div></label>
+          <input type="number" id="cfg_token_limit" value="100000" min="1000" step="1000" onchange="updateCfg()">
+        </div>
+      </div>
+      <div class="sec" style="border-bottom:none;padding-left:0;padding-right:0">
+        <div class="sec-title">梦境参数</div>
+        <div class="setting-row">
+          <label>启用梦境<div class="hint">关闭后不影响主 Agent</div></label>
+          <input type="checkbox" id="cfg_enabled" checked onchange="updateCfg()">
+        </div>
+        <div class="setting-row">
+          <label>空闲超时（分钟）<div class="hint">连续无操作多久触发梦境</div></label>
+          <input type="number" id="cfg_idle_timeout" value="15" min="1" max="120" onchange="updateCfg()">
+        </div>
+        <div class="setting-row">
+          <label>最大迭代轮数</label>
+          <input type="number" id="cfg_max_iters" value="100" min="5" max="500" onchange="updateCfg()">
+        </div>
+        <div class="setting-row">
+          <label>收敛判定轮数<div class="hint">连续N轮无提升即收敛</div></label>
+          <input type="number" id="cfg_convergence" value="20" min="5" max="100" onchange="updateCfg()">
+        </div>
+        <div class="setting-row">
+          <label>最大梦境时长（分钟）<div class="hint">超时自动终止</div></label>
+          <input type="number" id="cfg_max_duration" value="60" min="5" max="480" onchange="updateCfg()">
+        </div>
+        <div class="setting-row">
+          <label>变异器间隔（轮）<div class="hint">每N轮注入一次跨域变异</div></label>
+          <input type="number" id="cfg_mutation_interval" value="10" min="5" max="50" onchange="updateCfg()">
+        </div>
+      </div>
+      <div class="sec" style="border-bottom:none;padding-left:0;padding-right:0">
+        <div class="sec-title">Obsidian 同步</div>
+        <div class="setting-row">
+          <label>Obsidian Vault 路径</label>
+          <input type="text" id="cfg_vault_path" placeholder="/home/user/notes" onchange="updateCfg()">
+        </div>
+        <div class="setting-row">
+          <label>梦境笔记目录</label>
+          <input type="text" id="cfg_dream_folder" value="Dreams" onchange="updateCfg()">
+        </div>
+        <div class="setting-row">
+          <label>启用通知</label>
+          <input type="checkbox" id="cfg_notification" checked onchange="updateCfg()">
+        </div>
+      </div>
+      <div class="sec" style="border-bottom:none;padding-left:0;padding-right:0">
+        <div class="sec-title">资源管控</div>
+        <div class="setting-row">
+          <label>CPU 阈值 (%)<div class="hint">超阈值延迟启动</div></label>
+          <input type="number" id="cfg_cpu" value="80" min="10" max="100" onchange="updateCfg()">
+        </div>
+        <div class="setting-row">
+          <label>内存阈值 (%)</label>
+          <input type="number" id="cfg_mem" value="85" min="10" max="100" onchange="updateCfg()">
+        </div>
+      </div>
+      <button class="btn btn-dream" style="margin:16px 0 24px" onclick="saveSettings()">💾 保存设置</button>
+    </div>
+
+    <!-- Trigger (always visible at bottom) -->
+    <div class="sec" style="border-bottom:none;border-top:1px solid var(--border)">
+      <input id="motifInput" type="text" placeholder="输入母题（留空自动生成）...">
+      <div class="btn-row">
+        <button class="btn btn-dream" onclick="startDream()">🌙 做梦</button>
+        <button class="btn btn-stop" id="stopBtn" onclick="stopDream()">中断</button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main" id="mainContent">
+    <div class="welcome">
+      <div class="big" style="font-size:80px">🌙</div>
+      <h2>DreamWeaver 控制台</h2>
+      <p>左侧输入母题后点击"做梦"，AI 将进行 Genius → Critic → Judge → Refiner → Mutator 五角色自我对弈。<br><br>梦境完成后方案自动同步到 Obsidian Vault，并存入向量数据库供后续对话引用。</p>
+    </div>
+  </main>
+</div>
+
+<script>
+// ── Nebula particles (§9.1) ──
+const NC=document.getElementById('nebula'),nctx=NC.getContext('2d');
+let pts=[],dreaming=false;
+function rsN(){NC.width=innerWidth;NC.height=innerHeight}rsN();addEventListener('resize',rsN);
+for(let i=0;i<60;i++)pts.push({x:Math.random()*innerWidth,y:Math.random()*innerHeight,r:Math.random()*2+.5,vx:(Math.random()-.5)*.2,vy:(Math.random()-.5)*.2,a:Math.random()*.4+.1});
+(function loop(){nctx.clearRect(0,0,NC.width,NC.height);const cx=NC.width/2,cy=NC.height/2;
+for(let p of pts){if(dreaming){p.vx+=(cx-p.x)*5e-5;p.vy+=(cy-p.y)*5e-5}p.vx*=.999;p.vy*=.999;p.x+=p.vx;p.y+=p.vy;if(p.x<0)p.x=NC.width;if(p.x>NC.width)p.x=0;if(p.y<0)p.y=NC.height;if(p.y>NC.height)p.y=0;nctx.beginPath();nctx.arc(p.x,p.y,p.r,0,Math.PI*2);nctx.fillStyle=dreaming?`rgba(139,92,246,${p.a*2})`:`rgba(100,116,139,${p.a*.5})`;nctx.fill()}requestAnimationFrame(loop)})();
+
+// ── State ──
+const API='http://127.0.0.1:8000/dream';
+let selId=null,cfg={},filter='all',sort='created_at',_timer=null;
+async function api(u,o){const r=await fetch(API+u,o||{});if(!r.ok)throw Error(r.status);return r.json()}
+
+// ── Status ──
+async function pollStatus(){
+  try{const s=await api('/status');const w=dreaming;dreaming=s.status==='running';if(w!==dreaming){document.body.className=dreaming?'dreaming':(s.status==='completed'?'completed':'');document.getElementById('stopBtn').style.display=dreaming?'':'none'}
+  document.getElementById('roundNum').textContent=dreaming?s.current_round:'—';
+  document.getElementById('roundLabel').textContent=dreaming?`${s.max_rounds} 轮上限`:(s.status==='completed'?'已完成':'等待中');
+  document.getElementById('motifRunning').textContent=s.motif||'';document.getElementById('progressFill').style.width=s.max_rounds?Math.min(100,s.current_round/s.max_rounds*100)+'%':'0%'}catch(e){}
+}
+
+// ── History ──
+async function loadHistory(){
+  try{const data=await api(`/history?limit=100&sort_by=${sort}`);let items=data.items||[];
+  if(filter!=='all')items=items.filter(d=>d.status===filter);
+  const q=document.getElementById('searchInput')?.value?.toLowerCase();if(q)items=items.filter(d=>(d.motif||'').toLowerCase().includes(q));
+  document.getElementById('dreamCount').textContent=items.length;
+  const el=document.getElementById('dreamEntries');
+  if(!items.length){el.innerHTML='<div style="padding:16px;text-align:center;color:var(--muted);font-size:13px">暂无记录</div>';return}
+  el.innerHTML=items.map(d=>{const s=d.best_score||0,c=s>=8?'#10b981':s>=6?'#f59e0b':'#ef4444';return`<div class="dream-entry${selId===d.id?' selected':''}" onclick="selectDream('${d.id}')"><div class="dot" style="background:${c}"></div><div class="info"><div class="motif">${(d.motif||'').slice(0,40)||'未命名'}</div><div class="meta">${d.iterations||0}轮 · ${d.status||''} · ${(d.created_at||'').slice(0,10)}</div></div><div class="score" style="color:${c}">${s.toFixed(1)}</div></div>`}).join('')}catch(e){}
+}
+
+function setFilter(f,btn){filter=f;document.querySelectorAll('.filter-bar button').forEach(b=>b.classList.remove('active'));btn.classList.add('active');loadHistory()}
+function setSort(s,btn){sort=s;document.querySelectorAll('.filter-bar:last-of-type button').forEach(b=>b.classList.remove('active'));btn.classList.add('active');loadHistory()}
+
+// ── Dream detail ──
+async function selectDream(id){selId=id;loadHistory();
+  try{const d=await api(`/${id}`);renderDetail(d.dream,d.iterations||[])}catch(e){}}
+
+function renderDetail(dream,iter){
+  const m=document.getElementById('mainContent');const s=dream.best_score||0;
+  const rc=s>=8?'#10b981':s>=6?'#f59e0b':'#ef4444',rg=s>=8?'rgba(16,185,129,0.3)':s>=6?'rgba(245,158,11,0.3)':'rgba(239,68,68,0.3)';
+  const scored=iter.filter(l=>l.score!=null).sort((a,b)=>(a.round||0)-(b.round||0));
+  const mutations=iter.filter(l=>l.role==='mutator');
+  const model=cfg.model||'DeepSeek V4 Pro';const tags=(typeof dream.tags==='string'?dream.tags.split(','):dream.tags||[]).filter(Boolean);
+
+  m.innerHTML=`<div class="detail"><h2>${dream.motif||'未知母题'}</h2>
+  <div class="meta-tags">
+    <span>🆔 ${dream.id}</span><span>🔄 ${dream.iterations||0} 轮</span><span>${dream.status||''}</span>
+    <span>${dream.convergence_reason||''}</span><span class="tag-model">🧠 ${model}</span>
+    ${mutations.length?`<span>🧬 ${mutations.length}次变异</span>`:''}
+    ${cfg.vault_path?`<span class="tag-obsidian" onclick="openObsidian('${dream.outcome_path||''}')">📓 Obsidian 打开</span>`:''}
+  </div>
+  <div class="score-hero"><div class="score-ring" style="color:${rc};border:3px solid ${rc};box-shadow:0 0 20px ${rg}">${s.toFixed(1)}</div><div class="score-stats"><div>迭代: <strong>${dream.iterations||0}</strong> 轮</div><div>结束: <strong>${dream.convergence_reason||'—'}</strong></div><div>时间: <strong>${(dream.created_at||dream.start_time||'').slice(0,19)}</strong></div></div></div>
+  ${scored.length>1?`<div class="chart-container"><canvas id="scoreChart"></canvas></div>`:''}
+  <div class="solution-box">${md(dream.final_solution||'方案未记录')}</div>
+  <div class="action-bar">
+    ${dream.status!=='applied'?`<button class="btn-act btn-apply" onclick="applyDream('${dream.id}')">✓ 标记已应用</button>`:''}
+    ${cfg.vault_path?`<button class="btn-act btn-obsidian" onclick="openObsidian('${dream.outcome_path||''}')">📓 Obsidian 打开</button>`:''}
+    <button class="btn-act btn-challenge" onclick="openChallenge('${dream.id}')">⚡ 挑战此方案</button>
+    <button class="btn-act btn-export" onclick="exportDream('${dream.id}')">📥 导出 JSON</button>
+    <button class="btn-act btn-delete" onclick="deleteDream('${dream.id}')">🗑 删除</button>
+  </div></div>`;
+  if(scored.length>1)setTimeout(()=>drawChart(scored,dream.best_score),100)
+}
+
+function md(t){return(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/^### (.+)$/gm,'<h3>$1</h3>').replace(/^## (.+)$/gm,'<h2>$1</h2>').replace(/^# (.+)$/gm,'<h1>$1</h1>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'<code style="background:rgba(139,92,246,0.2);padding:1px 6px;border-radius:4px">$1</code>')}
+
+function drawChart(data,best){
+  const c=document.getElementById('scoreChart');if(!c)return;const ctx=c.getContext('2d');
+  const W=c.parentElement.clientWidth-40,H=200;c.width=W*2;c.height=H*2;c.style.width=W+'px';c.style.height=H+'px';ctx.scale(2,2);
+  const pad={t:20,r:20,b:30,l:40},pw=W-pad.l-pad.r,ph=H-pad.t-pad.b;
+  const xs=data.map(d=>d.round||0),ys=data.map(d=>d.score||0);
+  const xMin=Math.min(...xs),xMax=Math.max(...xs)||1;
+  const sx=v=>pad.l+(v-xMin)/(xMax-xMin)*pw,sy=v=>pad.t+(1-v/10)*ph;
+  ctx.strokeStyle='#1e1e3a';ctx.lineWidth=1;for(let y=0;y<=10;y+=2){const py=sy(y);ctx.beginPath();ctx.moveTo(pad.l,py);ctx.lineTo(W-pad.r,py);ctx.stroke();ctx.fillStyle='#64748b';ctx.font='11px Inter';ctx.textAlign='right';ctx.fillText(y,pad.l-8,py+4)}
+  ctx.strokeStyle='#8b5cf6';ctx.lineWidth=2.5;ctx.beginPath();ctx.shadowColor='rgba(139,92,246,0.4)';ctx.shadowBlur=6;
+  data.forEach((d,i)=>{const px=sx(d.round),py=sy(d.score);i===0?ctx.moveTo(px,py):ctx.lineTo(px,py)});ctx.stroke();ctx.shadowBlur=0;
+  data.forEach(d=>{const px=sx(d.round),py=sy(d.score);ctx.beginPath();ctx.arc(px,py,4,0,Math.PI*2);ctx.fillStyle=d.score>=8?'#10b981':d.score>=6?'#f59e0b':'#ef4444';ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();if(d.score===best){ctx.beginPath();ctx.arc(px,py,8,0,Math.PI*2);ctx.strokeStyle='#fbbf24';ctx.lineWidth=2;ctx.stroke()}})
+  ctx.fillStyle='#64748b';ctx.textAlign='center';for(let i=0;i<data.length;i+=Math.max(1,Math.floor(data.length/8)))ctx.fillText(data[i].round,sx(data[i].round),H-8)
+}
+
+// ── Actions ──
+async function startDream(){const m=document.getElementById('motifInput').value;try{await api('/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({motif:m||null})});document.getElementById('motifInput').value='';pollStatus();loadHistory()}catch(e){toast('启动失败')}}
+async function stopDream(){await api('/stop',{method:'POST'});pollStatus();loadHistory()}
+async function applyDream(id){await api(`/${id}/apply`,{method:'POST'});toast('已标记为"已应用"');selectDream(id)}
+async function deleteDream(id){if(!confirm('确定删除?'))return;await api(`/${id}`,{method:'DELETE'});selId=null;document.getElementById('mainContent').innerHTML=`<div class="welcome"><div style="font-size:80px">🌙</div><h2>DreamWeaver 控制台</h2></div>`;loadHistory()}
+async function exportDream(id){const d=await api(`/${id}`);const b=JSON.stringify(d,null,2);const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([b],{type:'application/json'}));a.download=`dream-${id}.json`;a.click();toast('已导出')}
+
+function openObsidian(path){if(path){window.open(`obsidian://open?path=${encodeURIComponent(path)}`,'_blank')}else{toast('无 Obsidian 路径')}}
+
+function openChallenge(id){const o=document.createElement('div');o.className='modal-overlay';o.innerHTML=`<div class="modal"><h3>⚡ 挑战此方案</h3><p style="font-size:13px;color:var(--muted);margin-bottom:12px">你的质疑将触发一轮短梦境（10轮）来深度完善方案</p><textarea id="chText" placeholder="例如：方案忽略了成本因素..."></textarea><div class="btn-row" style="justify-content:flex-end;margin-top:12px"><button class="btn btn-ghost" onclick="this.closest('.modal-overlay').remove()">取消</button><button class="btn btn-dream" onclick="runChallenge('${id}')">发起挑战（10轮）</button></div></div>`;document.body.appendChild(o);o.addEventListener('click',e=>{if(e.target===o)o.remove()})}
+async function runChallenge(id){const t=document.getElementById('chText')?.value||'';if(!t.trim())return;document.querySelector('.modal-overlay')?.remove();document.getElementById('motifInput').value=`[挑战] ${t.slice(0,100)}`;startDream();toast('挑战梦境已启动')}
+
+// ── Settings ──
+function switchTab(t){document.getElementById('tabLog').classList.toggle('active',t==='log');document.getElementById('tabSettings').classList.toggle('active',t==='settings');document.getElementById('panelLog').style.display=t==='log'?'':'none';document.getElementById('panelSettings').style.display=t==='settings'?'':'none'}
+function updateCfg(){
+  cfg={ enabled:document.getElementById('cfg_enabled').checked, idle_timeout_seconds:parseInt(document.getElementById('cfg_idle_timeout').value)*60,
+    max_iterations:parseInt(document.getElementById('cfg_max_iters').value), convergence_rounds:parseInt(document.getElementById('cfg_convergence').value),
+    max_dream_duration_minutes:parseInt(document.getElementById('cfg_max_duration').value), mutation_interval:parseInt(document.getElementById('cfg_mutation_interval').value),
+    cloud_enabled:document.getElementById('cfg_cloud').checked, model:document.getElementById('cfg_model').value,
+    judge_model:document.getElementById('cfg_judge_model').value, local_model:document.getElementById('cfg_local_model').value,
+    daily_token_limit:parseInt(document.getElementById('cfg_token_limit').value), vault_path:document.getElementById('cfg_vault_path').value,
+    dream_folder:document.getElementById('cfg_dream_folder').value, notification:document.getElementById('cfg_notification').checked,
+    resource_cpu_threshold:parseInt(document.getElementById('cfg_cpu').value), resource_memory_threshold:parseInt(document.getElementById('cfg_mem').value) };
+  localStorage.setItem('dreamweaver_cfg',JSON.stringify(cfg));
+  document.getElementById('tokenLimit').textContent=(cfg.daily_token_limit||100000).toLocaleString();
+  document.getElementById('modelDisplay').textContent=cfg.cloud_enabled?(cfg.model==='deepseek-reasoner'?'DeepSeek R1':'DeepSeek V4'):(cfg.local_model||'Ollama');
+}
+function loadCfg(){const s=localStorage.getItem('dreamweaver_cfg');if(s){cfg=JSON.parse(s);const e=id=>document.getElementById(id);
+  if(e('cfg_enabled')){e('cfg_enabled').checked=cfg.enabled??true;e('cfg_idle_timeout').value=(cfg.idle_timeout_seconds??900)/60;
+  e('cfg_max_iters').value=cfg.max_iterations??100;e('cfg_convergence').value=cfg.convergence_rounds??20;
+  e('cfg_max_duration').value=cfg.max_dream_duration_minutes??60;e('cfg_mutation_interval').value=cfg.mutation_interval??10;
+  e('cfg_cloud').checked=cfg.cloud_enabled??true;e('cfg_model').value=cfg.model||'deepseek-chat';
+  e('cfg_judge_model').value=cfg.judge_model||'deepseek-chat';e('cfg_local_model').value=cfg.local_model||'deepseek-coder:33b';
+  e('cfg_token_limit').value=cfg.daily_token_limit??100000;e('cfg_vault_path').value=cfg.vault_path||'';
+  e('cfg_dream_folder').value=cfg.dream_folder||'Dreams';e('cfg_notification').checked=cfg.notification??true;
+  e('cfg_cpu').value=cfg.resource_cpu_threshold??80;e('cfg_mem').value=cfg.resource_memory_threshold??85;
+  document.getElementById('tokenLimit').textContent=(cfg.daily_token_limit||100000).toLocaleString();
+  document.getElementById('modelDisplay').textContent=cfg.cloud_enabled!==false?(cfg.model==='deepseek-reasoner'?'DeepSeek R1':'DeepSeek V4'):(cfg.local_model||'Ollama')}}
+}
+function saveSettings(){updateCfg();toast('设置已保存');loadHistory()}
+
+function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),3000)}
+
+// ── Init ──
+loadCfg();pollStatus();loadHistory();_timer=setInterval(()=>{pollStatus();loadHistory()},5000);
+</script>
+</body>
+</html>

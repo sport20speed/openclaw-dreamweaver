@@ -36,6 +36,17 @@ def _get_api_key() -> str:
     return ""
 
 
+def _read_env(key: str) -> str:
+    """Read any key from .env file."""
+    env_path = Path(__file__).parent.parent.parent / ".env"
+    if env_path.exists():
+        for line in env_path.read_text().splitlines():
+            line = line.strip()
+            if line.startswith(f"{key}="):
+                return line.split("=", 1)[1].strip("\"'")
+    return ""
+
+
 class DeepSeekProvider:
     """Real DeepSeek LLM provider (used by SelfPlayEngine)."""
 
@@ -132,50 +143,85 @@ async def cmd_run(args: argparse.Namespace) -> None:
         print(f"\n💾 结果已保存到 {args.output}")
 
 
-async def cmd_serve(args: argparse.Namespace) -> None:
-    """Start the FastAPI server."""
+def cmd_serve(args: argparse.Namespace) -> None:
+    """Start the FastAPI server (synchronous, uvicorn manages its own loop)."""
     try:
         import uvicorn
     except ImportError:
         print("❌ 需要安装 uvicorn: pip install uvicorn")
         sys.exit(1)
 
-    api_key = _get_api_key()
-    if not api_key:
-        print("❌ 未找到 DEEPSEEK_API_KEY")
-        sys.exit(1)
-
+    from contextlib import asynccontextmanager
     from .config import DreamWeaverConfig
     from .database import DreamRepository
     from .dream_service import DreamService
-    from .obsidian_writer import ObsidianWriter
     from .api import create_router
-
+    from .llm_providers import get_provider
     from fastapi import FastAPI
 
-    llm = DeepSeekProvider(api_key)
+    # Provider selection: LOCAL_MODEL env → Ollama, else DeepSeek
+    use_local = bool(os.environ.get("LOCAL_MODEL") or _read_env("LOCAL_MODEL"))
+    local_model = os.environ.get("LOCAL_MODEL") or _read_env("LOCAL_MODEL") or "qwen3.5:9b"
+    api_key = _get_api_key()
+    if not use_local and not api_key:
+        print("❌ 未找到 DEEPSEEK_API_KEY，设置 LOCAL_MODEL=qwen3.5:9b 使用本地模型")
+        sys.exit(1)
+
+    llm = get_provider(use_local=use_local, local_model=local_model, api_key=api_key)
+    model_label = f"Ollama {local_model}" if use_local else "DeepSeek V4 Pro"
+    print(f"🧠 模型: {model_label}")
     config = DreamWeaverConfig()
-
     repo = DreamRepository(args.db or "dreamweaver.db")
-    await repo.init()
 
-    svc = DreamService(config, llm)
-    router = create_router(svc, repo)
-    svc.on_dream_complete = lambda r: repo.save_result(
-        __import__("datetime").datetime.now().strftime("%Y%m%d-") + "dream", r
-    )
+    # Obsidian writer setup
+    vault_path = os.environ.get("OBSIDIAN_VAULT_PATH", "")
+    dream_folder = os.environ.get("DREAM_FOLDER", "Dreams")
+    from .obsidian_writer import ObsidianWriter, ObsidianWriterConfig
 
-    app = FastAPI(title="DreamWeaver", version="1.0.0")
-    app.include_router(router)
+    @asynccontextmanager
+    async def lifespan(app):
+        await repo.init()
 
-    @app.on_event("startup")
-    async def startup() -> None:
+        # Obsidian writer (if vault configured)
+        writer = None
+        if vault_path and os.path.isdir(vault_path):
+            from .obsidian_writer import VaultFileSystem
+            class _FS:
+                async def write_note(self, note):
+                    p = Path(vault_path) / note.path
+                    p.parent.mkdir(parents=True, exist_ok=True)
+                    p.write_text(note.content, encoding="utf-8")
+                    return str(p)
+                async def note_exists(self, title):
+                    target = Path(vault_path) / f"{title}.md"
+                    return str(target) if target.exists() else None
+                async def create_stub(self, title):
+                    p = Path(vault_path) / f"{title}.md"
+                    p.write_text(f"# {title}\n\n存根笔记 — 由 DreamWeaver 自动创建。\n", encoding="utf-8")
+                    return str(p)
+            writer = ObsidianWriter(fs=_FS(), config=ObsidianWriterConfig(
+                vault_path=vault_path, dream_folder=dream_folder))
+            print(f"📓 Obsidian sync: {vault_path}/{dream_folder}")
+
+        svc = DreamService(config, llm)
+        router = create_router(svc, repo)
+        app.include_router(router)
+
+        async def _save(r):
+            from datetime import datetime
+            did = datetime.now().strftime("%Y%m%d-") + "dream"
+            await repo.save_result(did, r)
+            if writer:
+                await writer.write(r)
+                print(f"📓 Synced to Obsidian: {r.motif[:50]}...")
+        svc.on_dream_complete = _save
+
         await svc.start()
-
-    @app.on_event("shutdown")
-    async def shutdown() -> None:
+        yield
         await svc.stop()
         await repo.close()
+
+    app = FastAPI(title="DreamWeaver", version="1.0.0", lifespan=lifespan)
 
     print(f"\n🌙 DreamWeaver API server starting on {args.host}:{args.port}")
     print(f"   Docs: http://{args.host}:{args.port}/docs")
@@ -267,7 +313,11 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
-    asyncio.run(args.func(args))
+    func = args.func
+    if func is cmd_serve:
+        func(args)  # sync — uvicorn manages its own event loop
+    else:
+        asyncio.run(func(args))
 
 
 if __name__ == "__main__":
