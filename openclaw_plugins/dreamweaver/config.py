@@ -17,6 +17,8 @@ class DreamWeaverConfig:
     obsidian_vault_path: str = ""
     dream_folder: str = "Dreams"
     cloud_enabled: bool = False
+    cloud_model: str = "deepseek-chat"       # Model used for Genius/Critic/Refiner/Mutator
+    judge_model: str = "deepseek-chat"       # Judge always uses cloud for reliability
     local_model: str = "deepseek-coder:33b"
     daily_token_limit: int = 100_000
     notification: bool = True

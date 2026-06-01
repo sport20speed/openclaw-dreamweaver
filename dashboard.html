@@ -2,171 +2,383 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🌙 DreamWeaver 控制台</title>
+<title>DreamWeaver · 午夜天文台</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=DM+Sans:opsz,wght@9..40,400;9..40,500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#0b0b1a;--panel:#12122a;--border:rgba(255,255,255,0.06);--purple:#8b5cf6;--purple-bg:rgba(139,92,246,0.12);--purple-glow:rgba(139,92,246,0.25);--green:#10b981;--green-bg:rgba(16,185,129,0.12);--gold:#fbbf24;--red:#ef4444;--blue:#3b82f6;--text:#e8e8f0;--muted:#7878a0;--radius:12px;--shadow:0 2px 16px rgba(0,0,0,0.3)}
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Inter','Segoe UI','Noto Sans SC','PingFang SC',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
-::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:3px}
+:root {
+  --ink: #080c14; --panel: #0f1520; --panel-hover: #151c2a;
+  --border: rgba(200,180,150,0.08); --border-active: rgba(200,180,150,0.18);
+  --moon: #e2a654; --moon-dim: rgba(226,166,84,0.15); --moon-glow: rgba(226,166,84,0.08);
+  --text: #e8e0d5; --text-dim: #8a8078; --text-muted: #5a5550;
+  --rose: #c48450; --olive: #8b9e6e; --ember: #c46040;
+  --serif: 'Cormorant Garamond', Georgia, 'Noto Serif SC', serif;
+  --sans: 'DM Sans', 'PingFang SC', 'Noto Sans SC', sans-serif;
+  --mono: 'JetBrains Mono', 'Consolas', monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
 
-/* Navbar */
-.navbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:0 32px;height:60px;background:rgba(11,11,26,0.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
-.navbar .brand{display:flex;align-items:center;gap:12px;font-weight:700;font-size:17px}
-.navbar .moon{width:28px;height:28px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#c4b5fd,var(--purple));box-shadow:0 0 16px var(--purple-glow);transition:all .6s}
-body.dreaming .navbar .moon{box-shadow:0 0 32px var(--purple-glow),0 0 60px rgba(139,92,246,0.15)}
-.navbar .badge{display:inline-flex;align-items:center;gap:6px;padding:4px 14px;border-radius:20px;font-size:12px;font-weight:500;transition:all .3s}
-.navbar .badge.idle{background:var(--border);color:var(--muted)}
-.navbar .badge.running{background:var(--purple-bg);color:var(--purple)}.navbar .badge.running .dot{animation:pulse 1.2s infinite}
-.navbar .badge.completed{background:var(--green-bg);color:var(--green)}
-.dot{width:8px;height:8px;border-radius:50%;background:currentColor}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-.navbar button{padding:8px 16px;border-radius:8px;border:none;font-size:13px;font-weight:500;font-family:inherit;cursor:pointer;transition:all .15s}
-.btn-primary{background:var(--purple);color:#fff}.btn-primary:hover{background:#7c3aed}
-.btn-stop{background:rgba(239,68,68,0.15);color:var(--red)}.btn-stop:hover{background:rgba(239,68,68,0.25)}
+body {
+  font-family: var(--sans); background: var(--ink); color: var(--text);
+  min-height: 100vh; -webkit-font-smoothing: antialiased;
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(226,166,84,0.03) 0%, transparent 70%),
+    radial-gradient(ellipse at 80% 100%, rgba(196,132,80,0.02) 0%, transparent 50%);
+  background-attachment: fixed;
+}
+body::after {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 999;
+  opacity: 0.03; background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 256px 256px;
+}
 
-/* Layout */
-.page{display:flex;height:calc(100vh - 60px)}
-.sidebar{width:340px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
-.main{flex:1;overflow-y:auto;padding:32px 40px}
+::-webkit-scrollbar { width: 4px } ::-webkit-scrollbar-track { background: transparent }
+::-webkit-scrollbar-thumb { background: rgba(200,180,150,0.1); border-radius: 2px }
 
-/* Sidebar sections */
-.sec{padding:16px 20px;border-bottom:1px solid var(--border)}
-.section-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px;display:flex;justify-content:space-between}
+/* ── Masthead ── */
+.masthead {
+  position: sticky; top: 0; z-index: 50;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 40px; height: 56px;
+  background: rgba(8,12,20,0.88); backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+}
+.masthead .logo {
+  display: flex; align-items: center; gap: 14px;
+  font-family: var(--serif); font-size: 20px; font-weight: 400;
+  letter-spacing: 0.02em; color: var(--text);
+}
+.masthead .logo em { font-style: italic; color: var(--text-dim); margin-right: 2px }
 
-.status-block{display:flex;align-items:center;gap:16px}
-.status-block .ring{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;flex-shrink:0;border:2px solid var(--muted);color:var(--muted)}
-.status-block .ring.running{border-color:var(--purple);color:var(--purple);animation:ringPulse 2s infinite}
-@keyframes ringPulse{0%,100%{box-shadow:0 0 0 0 var(--purple-glow)}50%{box-shadow:0 0 0 8px transparent}}
-.status-block .ring.completed{border-color:var(--green);color:var(--green)}
-.progress{height:3px;border-radius:2px;background:rgba(255,255,255,0.06);overflow:hidden;margin-top:10px}
-.progress .fill{height:100%;border-radius:2px;background:var(--purple);transition:width .5s}
+/* Moon breathing */
+.moon-phase {
+  width: 32px; height: 32px; border-radius: 50%; position: relative;
+  background: radial-gradient(circle at 35% 35%, #f0d090, var(--moon));
+  box-shadow: 0 0 24px var(--moon-glow), 0 0 60px rgba(226,166,84,0.03);
+  transition: box-shadow 1.2s ease;
+}
+.moon-phase.waxing {
+  animation: breathe 3s ease-in-out infinite;
+}
+@keyframes breathe {
+  0%, 100% { box-shadow: 0 0 16px var(--moon-glow), 0 0 40px rgba(226,166,84,0.02); }
+  50% { box-shadow: 0 0 32px rgba(226,166,84,0.25), 0 0 80px rgba(226,166,84,0.06); }
+}
 
-.trigger-box{display:flex;gap:6px}
-.trigger-box input{flex:1;padding:10px 14px;border-radius:8px;font-size:13px;font-family:inherit;border:1px solid var(--border);background:rgba(255,255,255,0.04);color:var(--text);outline:none}
-.trigger-box input:focus{border-color:var(--purple);box-shadow:0 0 0 3px var(--purple-glow)}
+.masthead .nav-group { display: flex; align-items: center; gap: 4px }
+.masthead button {
+  font-family: var(--sans); font-size: 13px; font-weight: 400;
+  padding: 7px 16px; border-radius: 6px; cursor: pointer; transition: all 0.2s;
+  border: 1px solid transparent; background: transparent; color: var(--text-dim);
+}
+.masthead button:hover { color: var(--text); background: var(--panel-hover) }
+.masthead button.primary {
+  background: rgba(226,166,84,0.1); color: var(--moon); border-color: rgba(226,166,84,0.2);
+}
+.masthead button.primary:hover { background: rgba(226,166,84,0.18) }
+.masthead button.stop {
+  color: var(--ember); border-color: rgba(196,96,64,0.25); background: rgba(196,96,64,0.06);
+}
+.masthead .sep { width: 1px; height: 20px; background: var(--border); margin: 0 8px }
 
-.model-selector{display:flex;gap:6px;flex-wrap:wrap}
-.model-selector button{padding:6px 14px;border-radius:20px;border:1px solid var(--border);font-size:12px;background:transparent;color:var(--muted);cursor:pointer;transition:.15s;font-family:inherit}
-.model-selector button.active{background:var(--purple-bg);border-color:var(--purple);color:var(--purple)}
+/* Status indicator */
+.status-chip {
+  display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 500;
+  padding: 4px 14px; border-radius: 20px; letter-spacing: 0.02em;
+}
+.status-chip.idle { color: var(--text-dim); background: rgba(255,255,255,0.03) }
+.status-chip.running { color: var(--moon); background: var(--moon-dim) }
+.status-chip.running .pulse-dot { animation: pulse 1.5s ease-in-out infinite }
+.status-chip.completed { color: var(--olive); background: rgba(139,158,110,0.1) }
+.pulse-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; display: inline-block }
+@keyframes pulse { 0%,100% { opacity: 1; transform: scale(1) } 50% { opacity: 0.4; transform: scale(1.3) } }
 
-.dream-list{flex:1;overflow-y:auto;padding:8px 12px}
-.dream-card{padding:12px 14px;border-radius:10px;cursor:pointer;transition:all .15s;border:1px solid transparent;margin-bottom:6px}
-.dream-card:hover{background:rgba(255,255,255,0.03);border-color:rgba(255,255,255,0.06)}
-.dream-card.selected{background:var(--purple-bg);border-color:rgba(139,92,246,0.25)}
-.dream-card .top{display:flex;align-items:flex-start;gap:10px}
-.dream-card .score-badge{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
-.dream-card .content{flex:1;min-width:0}
-.dream-card .motif{font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.dream-card .meta{font-size:11px;color:var(--muted);margin-top:3px}
-.dream-card .tags{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
-.dream-card .tags span{padding:2px 8px;border-radius:10px;font-size:10px;background:rgba(255,255,255,0.04);color:var(--muted)}
-.filter-bar{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px}
-.filter-bar button{padding:4px 12px;border-radius:20px;border:none;font-size:11px;font-weight:500;background:rgba(255,255,255,0.04);color:var(--muted);cursor:pointer;font-family:inherit}
-.filter-bar button.active{background:var(--purple-bg);color:var(--purple)}
-.search-box{width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);font-size:12px;font-family:inherit;background:rgba(255,255,255,0.03);color:var(--text);outline:none;margin-top:8px}
+/* ── Layout ── */
+.page { display: flex; min-height: calc(100vh - 56px) }
+.col-side { width: 370px; flex-shrink: 0; border-right: 1px solid var(--border); display: flex; flex-direction: column }
+.col-main { flex: 1; min-width: 0; overflow-y: auto; position: relative }
 
-/* Main views - toggled by display */
-.view{display:none;animation:fadeIn .2s}.view.active{display:block}
-@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+/* Sidebar panes */
+.pane { padding: 24px 24px 20px; border-bottom: 1px solid var(--border) }
+.pane:last-child { border-bottom: none }
+.pane-label {
+  font-family: var(--sans); font-size: 10px; font-weight: 500; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--text-muted); margin-bottom: 16px;
+}
+
+/* Status pane */
+.status-hero { display: flex; align-items: center; gap: 20px }
+.status-hero .moon {
+  width: 64px; height: 64px; border-radius: 50%; flex-shrink: 0;
+  border: 1.5px solid rgba(200,180,150,0.15);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--serif); font-size: 24px; font-weight: 400; color: var(--text-dim);
+  transition: all 0.6s ease;
+}
+.status-hero .moon.active {
+  border-color: var(--moon); color: var(--moon);
+  box-shadow: 0 0 40px var(--moon-glow), inset 0 0 20px rgba(226,166,84,0.04);
+}
+.status-hero .moon.done { border-color: rgba(139,158,110,0.4); color: var(--olive) }
+.status-hero .info { flex: 1 }
+.status-hero .info .title { font-family: var(--serif); font-size: 18px; font-style: italic; margin-bottom: 4px }
+.status-hero .info .sub { font-size: 12px; color: var(--text-dim); line-height: 1.5 }
+.status-hero .info .motif { font-size: 12px; color: var(--moon); margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+
+/* Progress thread */
+.progress-thread { height: 1px; background: var(--border); margin-top: 16px; position: relative }
+.progress-thread .fill { height: 100%; background: var(--moon); transition: width 0.8s ease; position: relative }
+.progress-thread .fill::after { content: ''; position: absolute; right: 0; top: -2px; width: 5px; height: 5px; border-radius: 50%; background: var(--moon); opacity: 0.6 }
+
+/* ── Trigger ── */
+.trigger-wrap { display: flex; gap: 8px }
+.trigger-wrap input {
+  flex: 1; padding: 11px 16px; border-radius: 8px; font-size: 13px; font-family: var(--sans);
+  border: 1px solid var(--border); background: rgba(255,255,255,0.02);
+  color: var(--text); outline: none; transition: border-color 0.2s;
+}
+.trigger-wrap input::placeholder { color: var(--text-muted) }
+.trigger-wrap input:focus { border-color: var(--moon); background: rgba(255,255,255,0.03) }
+.trigger-wrap button {
+  padding: 11px 20px; border-radius: 8px; font-family: var(--sans); font-size: 13px;
+  font-weight: 500; cursor: pointer; border: none;
+  background: rgba(226,166,84,0.12); color: var(--moon);
+  transition: all 0.2s; white-space: nowrap;
+}
+.trigger-wrap button:hover { background: rgba(226,166,84,0.2) }
+
+/* ── Model ── */
+.model-tabs { display: flex; gap: 4px }
+.model-tabs button {
+  flex: 1; padding: 8px 0; border-radius: 6px; font-size: 12px; font-family: var(--sans);
+  border: 1px solid var(--border); background: transparent; color: var(--text-dim);
+  cursor: pointer; transition: all 0.2s; text-align: center;
+}
+.model-tabs button:hover { border-color: rgba(200,180,150,0.25); color: var(--text) }
+.model-tabs button.active {
+  background: rgba(226,166,84,0.08); border-color: rgba(226,166,84,0.25); color: var(--moon);
+}
+
+/* ── Dream list ── */
+.dream-pool { flex: 1; overflow-y: auto; padding: 8px 12px; scrollbar-gutter: stable }
+.filter-row { display: flex; gap: 4px; padding: 4px 12px; flex-wrap: wrap }
+.filter-row .chip {
+  padding: 4px 14px; border-radius: 20px; font-size: 11px; font-family: var(--sans);
+  border: 1px solid var(--border); background: transparent; color: var(--text-dim);
+  cursor: pointer; transition: all 0.2s;
+}
+.filter-row .chip:hover { border-color: rgba(200,180,150,0.25); color: var(--text) }
+.filter-row .chip.on { background: rgba(226,166,84,0.08); border-color: rgba(226,166,84,0.25); color: var(--moon) }
+.search-inline { width: 100%; padding: 8px 16px; margin: 8px 12px; border-radius: 8px; font-size: 12px; font-family: var(--sans);
+  border: 1px solid var(--border); background: rgba(255,255,255,0.02); color: var(--text); outline: none; width: calc(100% - 24px) }
+.search-inline:focus { border-color: var(--moon) }
+
+.entry {
+  padding: 14px 16px; border-radius: 10px; cursor: pointer; transition: all 0.2s;
+  display: flex; gap: 14px; align-items: flex-start; margin: 2px 0;
+  border: 1px solid transparent;
+}
+.entry:hover { background: rgba(255,255,255,0.02); border-color: var(--border) }
+.entry.picked { background: rgba(226,166,84,0.04); border-color: rgba(226,166,84,0.15) }
+.entry .score-num {
+  width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center;
+  justify-content: center; font-family: var(--serif); font-size: 17px; font-weight: 600;
+  flex-shrink: 0;
+}
+.entry .body { flex: 1; min-width: 0 }
+.entry .motif-line { font-size: 13px; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.entry .sub-line { font-size: 11px; color: var(--text-dim); margin-top: 4px }
+
+/* ── Main content areas ── */
+.content { display: none; padding: 48px 56px; animation: reveal 0.4s ease }
+.content.on { display: block }
+@keyframes reveal { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: translateY(0) } }
 
 /* Welcome */
-.welcome{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;height:calc(100vh - 140px)}
-.welcome .icon{font-size:72px;margin-bottom:16px;opacity:.6}
-.welcome h2{font-size:24px;font-weight:600;margin-bottom:8px}
-.welcome p{color:var(--muted);max-width:440px;line-height:1.7;font-size:14px}
-.welcome .stats{display:flex;gap:16px;margin-top:32px}
-.welcome .stat{padding:16px 24px;border-radius:10px;background:var(--panel);border:1px solid var(--border);text-align:center;min-width:90px}
-.welcome .stat .num{font-size:28px;font-weight:800;background:linear-gradient(135deg,#c4b5fd,var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.welcome .stat .lbl{font-size:11px;color:var(--muted);margin-top:4px}
+.welcome { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 80px 40px; min-height: 80vh }
+.welcome .orb {
+  width: 120px; height: 120px; border-radius: 50%; margin-bottom: 32px;
+  background: radial-gradient(circle at 40% 35%, rgba(226,166,84,0.15), transparent 70%);
+  border: 1px solid rgba(226,166,84,0.12);
+  display: flex; align-items: center; justify-content: center; font-family: var(--serif);
+  font-size: 48px; color: var(--moon); font-style: italic;
+  animation: orbFloat 6s ease-in-out infinite;
+}
+@keyframes orbFloat {
+  0%, 100% { transform: translateY(0) }
+  50% { transform: translateY(-8px) }
+}
+.welcome h2 { font-family: var(--serif); font-size: 32px; font-weight: 400; font-style: italic; margin-bottom: 12px; letter-spacing: 0.01em }
+.welcome .desc { font-size: 15px; color: var(--text-dim); max-width: 420px; line-height: 1.7 }
+.welcome .hint-row { display: flex; gap: 32px; margin-top: 40px }
+.welcome .hint { text-align: center }
+.welcome .hint .k { font-family: var(--serif); font-size: 36px; font-style: italic; color: var(--moon); opacity: 0.6 }
+.welcome .hint .v { font-size: 11px; color: var(--text-dim); margin-top: 6px; letter-spacing: 0.06em; text-transform: uppercase }
 
 /* Detail */
-.detail-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;gap:16px}
-.detail-header h2{font-size:22px;font-weight:600;line-height:1.4}
-.detail-meta{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px}
-.detail-meta .tag{padding:4px 14px;border-radius:20px;font-size:12px;font-weight:500;background:rgba(255,255,255,0.04);color:var(--muted);border:1px solid var(--border)}
-.detail-meta .tag.purple{background:var(--purple-bg);color:var(--purple);border-color:rgba(139,92,246,0.2)}
-.detail-meta .tag.green{background:var(--green-bg);color:var(--green);border-color:rgba(16,185,129,0.2)}
-.score-card{display:flex;align-items:center;gap:20px;padding:24px;border-radius:var(--radius);background:var(--panel);border:1px solid var(--border);box-shadow:var(--shadow);margin-bottom:28px}
-.score-ring{width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;flex-shrink:0}
-.chart-card{background:var(--panel);border-radius:var(--radius);padding:24px;border:1px solid var(--border);margin-bottom:28px}
-.chart-card canvas{width:100%;height:200px}
-.solution-card{background:var(--panel);border-radius:var(--radius);padding:24px;border:1px solid var(--border);margin-bottom:28px}
-.solution-body{font-family:'JetBrains Mono','Consolas',monospace;font-size:13px;line-height:1.8;color:var(--text);max-height:480px;overflow:auto;white-space:pre-wrap}
-.action-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:40px}
-.action-bar button{padding:10px 20px;border-radius:8px;font-size:13px;font-weight:500;font-family:inherit;cursor:pointer;border:none;transition:.15s}
-.btn-apply{background:var(--green);color:#fff}
-.btn-obsidian{background:rgba(139,92,246,0.15);color:#c4b5fd;border:1px solid rgba(139,92,246,0.3)}
-.btn-challenge{background:transparent;border:1px solid var(--purple);color:var(--purple)}
-.btn-export{background:transparent;border:1px solid var(--border);color:var(--muted)}
-.btn-delete{background:transparent;border:1px solid rgba(239,68,68,0.3);color:var(--red)}
+.detail-header { margin-bottom: 32px }
+.detail-header .breadcrumb { font-size: 12px; color: var(--text-dim); margin-bottom: 12px; cursor: pointer; transition: color 0.2s }
+.detail-header .breadcrumb:hover { color: var(--moon) }
+.detail-header h2 { font-family: var(--serif); font-size: 26px; font-weight: 400; line-height: 1.35; font-style: italic }
+
+.meta-strip { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 32px }
+.meta-strip span {
+  padding: 5px 16px; border-radius: 20px; font-size: 11px; font-family: var(--sans);
+  border: 1px solid var(--border); color: var(--text-dim); letter-spacing: 0.02em;
+}
+
+.score-plaque {
+  display: flex; align-items: center; gap: 24px; padding: 28px 32px;
+  background: var(--panel); border-radius: 14px; border: 1px solid var(--border);
+  margin-bottom: 36px;
+}
+.score-plaque .ring {
+  width: 88px; height: 88px; border-radius: 50%; display: flex; align-items: center;
+  justify-content: center; font-family: var(--serif); font-size: 32px; font-weight: 600;
+  border: 2.5px solid; flex-shrink: 0;
+}
+.score-plaque .stats { font-size: 13px; color: var(--text-dim); line-height: 2 }
+.score-plaque .stats b { color: var(--text); font-weight: 500 }
+
+/* Chart */
+.chart-box { background: var(--panel); border-radius: 14px; padding: 28px; border: 1px solid var(--border); margin-bottom: 36px }
+.chart-box canvas { width: 100%; height: 220px }
+
+/* Solution */
+.solution-box { background: var(--panel); border-radius: 14px; padding: 32px; border: 1px solid var(--border); margin-bottom: 36px }
+.solution-box .body {
+  font-family: var(--sans); font-size: 14px; line-height: 1.85; color: var(--text);
+  max-height: 520px; overflow: auto; scrollbar-gutter: stable;
+}
+.solution-box .body h1, .solution-box .body h2, .solution-box .body h3 {
+  font-family: var(--serif); font-weight: 600; font-style: italic;
+  color: var(--moon); margin: 24px 0 12px; font-size: 18px;
+}
+.solution-box .body strong { font-weight: 600; color: #f0e8d8 }
+.solution-box .body code { padding: 2px 8px; border-radius: 4px; background: rgba(226,166,84,0.06); font-family: var(--mono); font-size: 12px; color: var(--rose) }
+
+/* Actions */
+.action-strip { display: flex; gap: 12px; flex-wrap: wrap }
+.action-strip button {
+  padding: 10px 24px; border-radius: 8px; font-size: 13px; font-family: var(--sans); font-weight: 500;
+  cursor: pointer; transition: all 0.2s; border: 1px solid var(--border);
+  background: transparent; color: var(--text-dim);
+}
+.action-strip button:hover { border-color: rgba(200,180,150,0.3); color: var(--text) }
+.action-strip button.primary { background: rgba(139,158,110,0.12); color: var(--olive); border-color: rgba(139,158,110,0.25) }
+.action-strip button.primary:hover { background: rgba(139,158,110,0.2) }
+.action-strip button.caution { color: var(--ember); border-color: rgba(196,96,64,0.2) }
 
 /* Settings */
-.settings-card{background:var(--panel);border-radius:var(--radius);border:1px solid var(--border);padding:4px 20px;margin-bottom:16px}
-.setting-row{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border)}
-.setting-row:last-child{border-bottom:none}
-.setting-row label{font-size:13px;font-weight:500}
-.setting-row .hint{font-size:11px;color:var(--muted);font-weight:400;margin-top:2px}
-.setting-row input[type=text],.setting-row input[type=number]{width:120px;padding:6px 12px;border-radius:6px;border:1px solid var(--border);background:rgba(255,255,255,0.04);color:var(--text);font-size:12px;outline:none;text-align:right}
-.setting-row input[type=checkbox]{accent-color:var(--purple);transform:scale(1.15)}
-.setting-row select{width:120px;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:rgba(255,255,255,0.04);color:var(--text);font-size:12px;outline:none}
+.settings-grid { display: grid; gap: 24px; max-width: 680px }
+.setting-block { background: var(--panel); border-radius: 14px; border: 1px solid var(--border); overflow: hidden }
+.setting-block .block-title { padding: 20px 24px 12px; font-family: var(--serif); font-size: 15px; font-style: italic; color: var(--text-dim) }
+.setting-block .row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 24px; border-top: 1px solid var(--border);
+}
+.setting-block .row:first-of-type { border-top: none }
+.setting-block .row label { font-size: 13px; font-weight: 400 }
+.setting-block .row .note { font-size: 11px; color: var(--text-dim); margin-top: 2px }
+.setting-block .row input[type=text], .setting-block .row input[type=number] {
+  width: 130px; padding: 7px 12px; border-radius: 6px; font-size: 12px; font-family: var(--sans);
+  border: 1px solid var(--border); background: rgba(255,255,255,0.02); color: var(--text);
+  outline: none; text-align: right;
+}
+.setting-block .row input:focus { border-color: var(--moon) }
+.setting-block .row input[type=checkbox] { accent-color: var(--moon); transform: scale(1.1) }
+.settings-save {
+  width: 100%; padding: 14px; border-radius: 10px; font-size: 14px; font-family: var(--sans);
+  font-weight: 500; cursor: pointer; border: 1px solid rgba(226,166,84,0.3);
+  background: rgba(226,166,84,0.08); color: var(--moon); transition: all 0.2s; margin-top: 8px;
+}
+.settings-save:hover { background: rgba(226,166,84,0.15) }
 
-.toast{position:fixed;bottom:24px;right:24px;z-index:200;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:500;background:var(--green);color:#fff;animation:toastUp .3s;box-shadow:0 4px 20px rgba(0,0,0,.4)}
-@keyframes toastUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+/* Modal */
+.modal-back { position: fixed; inset: 0; background: rgba(4,6,10,0.8); backdrop-filter: blur(6px); z-index: 100;
+  display: flex; align-items: center; justify-content: center; animation: reveal 0.2s }
+.modal-card { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 32px; width: 460px; max-width: 90vw; box-shadow: 0 20px 60px rgba(0,0,0,0.5) }
+.modal-card h3 { font-family: var(--serif); font-size: 18px; font-style: italic; margin-bottom: 8px }
+.modal-card p { font-size: 13px; color: var(--text-dim); line-height: 1.6; margin-bottom: 16px }
+.modal-card textarea { width: 100%; height: 100px; padding: 14px; border-radius: 8px; font-size: 13px; font-family: var(--sans);
+  border: 1px solid var(--border); background: rgba(255,255,255,0.02); color: var(--text); outline: none; resize: vertical }
+.modal-card textarea:focus { border-color: var(--moon) }
+.modal-card .btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px }
+.modal-card .btns button { padding: 10px 22px; border-radius: 8px; font-size: 13px; font-family: var(--sans); cursor: pointer;
+  border: 1px solid var(--border); background: transparent; color: var(--text-dim); transition: all 0.2s }
+.modal-card .btns button.go { background: rgba(226,166,84,0.1); border-color: rgba(226,166,84,0.25); color: var(--moon) }
+.modal-card .btns button.go:hover { background: rgba(226,166,84,0.18) }
+
+/* Toast */
+.note {
+  position: fixed; bottom: 32px; right: 32px; z-index: 200;
+  padding: 14px 28px; border-radius: 10px; font-size: 13px; font-family: var(--sans);
+  background: var(--panel); border: 1px solid var(--border);
+  color: var(--text); animation: noteIn 0.3s ease; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+@keyframes noteIn { from { opacity: 0; transform: translateY(16px) } to { opacity: 1; transform: translateY(0) } }
 </style>
 </head>
 <body>
-<nav class="navbar">
-  <div class="brand"><div class="moon"></div>DreamWeaver</div>
-  <div style="display:flex;align-items:center;gap:12px">
-    <span id="navBadge" class="badge idle"><span class="dot"></span>等待中</span>
-    <button class="btn-stop" id="navStop" style="display:none" onclick="stopDream()">■ 中断</button>
-    <button onclick="showView('main')" style="background:transparent;border:none;color:var(--muted);font-size:18px;cursor:pointer">🏠</button>
-    <button onclick="showView('settings')" style="background:transparent;border:none;color:var(--muted);font-size:18px;cursor:pointer">⚙️</button>
-    <button class="btn-primary" onclick="document.getElementById('mi').focus()">+ 新梦境</button>
+
+<header class="masthead">
+  <div class="logo"><div class="moon-phase" id="headerMoon"></div><em>The</em> DreamWeaver</div>
+  <div class="nav-group">
+    <span id="headerChip" class="status-chip idle"><span class="pulse-dot"></span>等待中</span>
+    <span class="sep"></span>
+    <button onclick="navigate('home')">阅览室</button>
+    <button onclick="navigate('settings')">配置</button>
+    <button class="primary" onclick="focusTrigger()">新梦境</button>
+    <button class="stop" id="btnStop" style="display:none" onclick="stopDream()">中断</button>
   </div>
-</nav>
+</header>
 
 <div class="page">
-  <aside class="sidebar">
-    <div class="sec">
-      <div class="section-title">状态</div>
-      <div class="status-block">
-        <div class="ring" id="sRing">—</div>
-        <div>
-          <div id="sLabel" style="font-size:13px;font-weight:600">空闲中</div>
-          <div id="sDetail" style="font-size:12px;color:var(--muted);margin-top:2px">等待触发梦境</div>
-          <div class="progress" id="pbar" style="display:none"><div class="fill" id="pfill" style="width:0%"></div></div>
+  <aside class="col-side">
+    <div class="pane">
+      <div class="pane-label">今夜观测</div>
+      <div class="status-hero">
+        <div class="moon" id="sideMoon">—</div>
+        <div class="info">
+          <div class="title" id="sideTitle">静静等待</div>
+          <div class="sub" id="sideSub">尚无梦境活动</div>
+          <div class="motif" id="sideMotif"></div>
+          <div class="progress-thread" id="sideProgress" style="display:none"><div class="fill" id="sideFill" style="width:0%"></div></div>
         </div>
       </div>
     </div>
-    <div class="sec">
-      <div class="section-title">快速触发</div>
-      <div class="trigger-box"><input id="mi" placeholder="输入母题（回车触发）..." onkeydown="if(event.key==='Enter')startDream()"></div>
-    </div>
-    <div class="sec">
-      <div class="section-title">模型</div>
-      <div class="model-selector">
-        <button id="mCloud" class="active" onclick="setModel('cloud')">☁️ DeepSeek</button>
-        <button id="mLocal" onclick="setModel('local')">🖥️ qwen3.5</button>
+
+    <div class="pane">
+      <div class="pane-label">观测请求</div>
+      <div class="trigger-wrap">
+        <input id="motifInput" placeholder="你想探索什么？Enter 开始…" onkeydown="if(event.key==='Enter')startDream()">
       </div>
     </div>
-    <div class="sec" style="flex:1;overflow:hidden;display:flex;flex-direction:column">
-      <div class="section-title"><span>梦境历史</span><span id="dCount">0</span></div>
-      <div class="filter-bar">
-        <button class="active" onclick="setFilter('all',this)">全部</button>
-        <button onclick="setFilter('completed',this)">完成</button>
-        <button onclick="setFilter('running',this)">运行中</button>
-        <button onclick="setFilter('applied',this)">已应用</button>
-        <input class="search-box" id="si" placeholder="搜索..." oninput="loadHistory()">
+
+    <div class="pane" style="padding-bottom:12px">
+      <div class="pane-label">观测镜</div>
+      <div class="model-tabs">
+        <button id="tabCloud" class="active" onclick="setModel('cloud')">☁ DeepSeek</button>
+        <button id="tabLocal" onclick="setModel('local')">🖥 Ollama</button>
       </div>
-      <div class="dream-list" id="dList"></div>
+    </div>
+
+    <div class="pane" style="flex:1;overflow:hidden;display:flex;flex-direction:column;padding-bottom:8px">
+      <div class="pane-label" style="display:flex;justify-content:space-between">观测记录 <span id="dreamCount">0</span></div>
+      <div class="filter-row">
+        <span class="chip on" onclick="setFilter('all',this)">全部</span>
+        <span class="chip" onclick="setFilter('completed',this)">已完成</span>
+        <span class="chip" onclick="setFilter('running',this)">进行中</span>
+        <span class="chip" onclick="setFilter('applied',this)">已采纳</span>
+      </div>
+      <input class="search-inline" id="searchInput" placeholder="检索记录…" oninput="loadHistory()">
+      <div class="dream-pool" id="dreamPool"></div>
     </div>
   </aside>
 
-  <main class="main">
-    <div id="viewMain" class="view active"></div>
-    <div id="viewDetail" class="view"></div>
-    <div id="viewSettings" class="view" style="padding:0 40px 40px;max-width:640px"></div>
+  <main class="col-main">
+    <div class="content on" id="viewHome"></div>
+    <div class="content" id="viewDetail"></div>
+    <div class="content" id="viewSettings"></div>
   </main>
 </div>
 
@@ -174,193 +386,209 @@ body.dreaming .navbar .moon{box-shadow:0 0 32px var(--purple-glow),0 0 60px rgba
 const API='http://127.0.0.1:8000/dream';
 let selId=null,filter='all',_timer=null;
 
-function qs(s){return document.querySelector(s)}
-function qsa(s){return document.querySelectorAll(s)}
-function toast(m,c){const t=document.createElement('div');t.className='toast';t.textContent=m;c&&(t.style.background=c);document.body.appendChild(t);setTimeout(()=>t.remove(),3000)}
-async function api(u,o){const r=await fetch(API+u,o);if(!r.ok)throw new Error(r.status+' '+r.statusText);return r.json()}
+const $=s=>document.querySelector(s),$$=s=>document.querySelectorAll(s);
+const toast=m=>{const t=document.createElement('div');t.className='note';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),3000)};
+async function api(u,o){const r=await fetch(API+u,o);if(!r.ok)throw Error(r.status);return r.json()}
 
-// ── View switching ──
-function showView(v){
-  ['viewMain','viewDetail','viewSettings'].forEach(id=>document.getElementById(id).classList.toggle('active',id==='view'+v.charAt(0).toUpperCase()+v.slice(1)));
-  if(v==='main'){showWelcome();loadHistory()}
-  if(v==='settings')renderSettings()
+// ── Navigation ──
+const _views={'home':'viewHome','detail':'viewDetail','settings':'viewSettings'};
+function navigate(v){
+  Object.entries(_views).forEach(([k,id])=>$(id).classList.toggle('on',k===v));
+  if(v==='home')renderHome();
+  if(v==='settings')renderSettings();
 }
+function focusTrigger(){$('#motifInput').focus();$('#motifInput').scrollIntoView({behavior:'smooth'})}
 
-// ── Status ──
+// ── Status polling ──
 async function pollStatus(){
   try{
     const s=await api('/status');
-    const ring=qs('#sRing'),label=qs('#sLabel'),detail=qs('#sDetail'),badge=qs('#navBadge'),pbar=qs('#pbar'),pf=qs('#pfill');
-    const isRunning=s.status==='running';
-    qs('#navStop').style.display=isRunning?'':'none';
-    document.body.className=isRunning?'dreaming':s.status==='completed'?'completed':'';
-    ring.className='ring '+s.status;ring.textContent=isRunning?s.current_round:'—';
-    label.textContent=isRunning?'梦境进行中':s.status==='completed'?'已完成':'空闲中';
-    detail.textContent=isRunning?s.motif||'运行中...':'等待触发';
-    badge.className='badge '+s.status;badge.innerHTML=`<span class="dot"></span>${isRunning?'梦境中 '+s.current_round+'/'+s.max_rounds:s.status==='completed'?'已完成':'等待中'}`;
-    if(isRunning){pbar.style.display='block';pf.style.width=s.max_rounds?Math.min(100,s.current_round/s.max_rounds*100)+'%':'0%'}else{pbar.style.display='none'}
-  }catch(e){console.error('status:',e)}
+    const running=s.status==='running';
+    document.body.dataset.phase=s.status;
+    $('#btnStop').style.display=running?'':'none';
+
+    // Header moon
+    const hm=$('#headerMoon');hm.classList.toggle('waxing',running);
+    // Side moon
+    const sm=$('#sideMoon'),st=$('#sideTitle'),ss=$('#sideSub'),smo=$('#sideMotif'),sp=$('#sideProgress'),sf=$('#sideFill');
+    sm.className='moon';sm.textContent=running?'◐':'◯';
+    if(running){sm.classList.add('active');st.textContent='观测中';ss.textContent='梦境正在凝结';smo.textContent=s.motif||'';sp.style.display='block';sf.style.width=s.max_rounds?Math.min(100,s.current_round/s.max_rounds*100)+'%':'0%'}
+    else if(s.status==='completed'){sm.classList.add('done');st.textContent='观测完成';ss.textContent='梦境已结晶';sp.style.display='none'}
+    else{st.textContent='静静等待';ss.textContent='尚无梦境活动';smo.textContent='';sp.style.display='none'}
+
+    // Header chip
+    const hc=$('#headerChip');
+    hc.className='status-chip '+s.status;
+    hc.innerHTML=`<span class="pulse-dot"></span>${running?`观测中 · ${s.current_round}/${s.max_rounds}`:s.status==='completed'?'已结晶':'等待中'}`;
+  }catch(e){}
 }
 
 // ── History ──
 async function loadHistory(){
   try{
-    const data=await api('/history?limit=200');
-    let items=data.items||[];
+    const data=await api('/history?limit=200');let items=data.items||[];
     if(filter!=='all')items=items.filter(d=>d.status===filter);
-    const sq=(qs('#si').value||'').toLowerCase();if(sq)items=items.filter(d=>(d.motif||'').toLowerCase().includes(sq));
-    qs('#dCount').textContent=items.length;
-    if(!items.length){qs('#dList').innerHTML='<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">暂无梦境记录</div>';return}
-    qs('#dList').innerHTML=items.map(d=>{
-      const s=d.best_score||0,c=s>=8?'var(--green)':s>=6?'var(--gold)':'var(--red)';
-      return `<div class="dream-card${selId===d.id?' selected':''}" onclick="selectDream('${d.id}')">
-        <div class="top"><div class="score-badge" style="background:${c}22;color:${c}">${s.toFixed(1)}</div>
-        <div class="content"><div class="motif">${(d.motif||'未命名').slice(0,60)}</div>
-        <div class="meta">${d.iterations||0}轮 · ${d.status||''} · ${(d.created_at||'').slice(0,10)}</div></div></div></div>`
+    const sq=($('#searchInput').value||'').toLowerCase();if(sq)items=items.filter(d=>(d.motif||'').toLowerCase().includes(sq));
+    $('#dreamCount').textContent=items.length;
+    if(!items.length){$('#dreamPool').innerHTML='<div style="padding:32px;text-align:center;color:var(--text-dim);font-size:13px;line-height:2">暂无观测记录<br><span style="font-size:11px;color:var(--text-muted)">输入母题并按 Enter 开始</span></div>';return}
+    $('#dreamPool').innerHTML=items.map(d=>{
+      const s=d.best_score||0,c=s>=8?'rgba(139,158,110,0.2)':s>=6?'rgba(226,166,84,0.15)':'rgba(196,96,64,0.1)';
+      const tc=s>=8?'var(--olive)':s>=6?'var(--moon)':'var(--ember)';
+      return `<div class="entry${selId===d.id?' picked':''}" onclick="selectDream('${d.id}')">
+        <div class="score-num" style="background:${c};color:${tc}">${s.toFixed(1)}</div>
+        <div class="body"><div class="motif-line">${(d.motif||'未命名').slice(0,50)}</div>
+        <div class="sub-line">${d.iterations||0} 轮 · ${d.status||''} · ${(d.created_at||'').slice(0,10)}</div></div></div>`
     }).join('')
-  }catch(e){console.error('history:',e)}
+  }catch(e){console.error(e)}
 }
-function setFilter(f,btn){filter=f;qsa('.filter-bar button').forEach(b=>b.classList.remove('active'));btn.classList.add('active');loadHistory()}
+function setFilter(f,el){filter=f;$$('.filter-row .chip').forEach(c=>c.classList.remove('on'));el.classList.add('on');loadHistory()}
 
 // ── Model ──
 async function setModel(m){
   if(m==='local'){
     await api('/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cloud_enabled:false,local_model:'qwen3.5:9b'})});
-    qs('#mCloud').classList.remove('active');qs('#mLocal').classList.add('active');
-    toast('🖥️ qwen3.5:9b')
+    $('#tabCloud').classList.remove('active');$('#tabLocal').classList.add('active');
+    toast('🖥 已切换至 qwen3.5:9b')
   }else{
     await api('/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cloud_enabled:true})});
-    qs('#mLocal').classList.remove('active');qs('#mCloud').classList.add('active');
-    toast('☁️ DeepSeek V4')
+    $('#tabLocal').classList.remove('active');$('#tabCloud').classList.add('active');
+    toast('☁ 已切换至 DeepSeek V4')
   }
 }
 
-// ── Welcome ──
-function showWelcome(){
-  const cards=document.querySelectorAll('.dream-card').length;
-  qs('#viewMain').innerHTML=`<div class="welcome"><div class="icon">🌙</div><h2>DreamWeaver 梦境引擎</h2><p>输入母题后按回车，AI 自动进行五角色自我对弈：Genius → Critic → Judge → Refiner → Mutator</p><div class="stats"><div class="stat"><div class="num">${cards||'?'}</div><div class="lbl">梦境</div></div><div class="stat"><div class="num">🔄</div><div class="lbl">独立思考</div></div><div class="stat"><div class="num">🧠</div><div class="lbl">自主进化</div></div></div></div>`
+// ── Home ──
+function renderHome(){
+  $('#viewHome').innerHTML=`<div class="welcome">
+    <div class="orb">◐</div>
+    <h2>午夜天文台</h2>
+    <p class="desc">在输入框中写下你想探索的问题，DreamWeaver 将在后台启动 Genius → Critic → Judge → Refiner → Mutator 五角色自我对弈，如同清晨凝结的露珠，为你产出创新的解决方案。</p>
+    <div class="hint-row">
+      <div class="hint"><div class="k">◯</div><div class="v">凝望夜空</div></div>
+      <div class="hint"><div class="k">◐</div><div class="v">潜入梦境</div></div>
+      <div class="hint"><div class="k">●</div><div class="v">迎接结晶</div></div>
+    </div>
+  </div>`
 }
 
 // ── Detail ──
 async function selectDream(id){
-  selId=id;loadHistory();showView('detail');
-  try{
-    const d=await api('/'+id);const dream=d.dream,iter=d.iterations||[];
-    renderDetail(dream,iter)
-  }catch(e){qs('#viewDetail').innerHTML='<p>加载失败</p>'}
-  window.scrollTo(0,0)
+  selId=id;loadHistory();navigate('detail');
+  try{const d=await api('/'+id);renderDetail(d.dream,d.iterations||[])}catch(e){$('#viewDetail').innerHTML='<p>加载失败</p>'}
 }
 function renderDetail(dream,iter){
-  const s=dream.best_score||0,c=s>=8?'var(--green)':s>=6?'var(--gold)':'var(--red)';
+  const s=dream.best_score||0,sc=s>=8?'var(--olive)':s>=6?'var(--moon)':'var(--ember)';
   const scored=iter.filter(l=>l.score!=null).sort((a,b)=>(a.round||0)-(b.round||0));
-  const m=document.getElementById('viewDetail');
-  m.innerHTML=`<div class="detail-header"><h2>${dream.motif||'未知'}</h2></div>
-    <div class="detail-meta"><span class="tag purple">🆔 ${dream.id}</span><span class="tag">🔄 ${dream.iterations||0}轮</span><span class="tag">${dream.status||''}</span><span class="tag">${dream.convergence_reason||''}</span></div>
-    <div class="score-card"><div class="score-ring" style="color:${c};border:3px solid ${c}">${s.toFixed(1)}</div>
-      <div>迭代 ${dream.iterations||0}轮 · ${dream.convergence_reason||'—'}<br>${(dream.created_at||dream.start_time||'').slice(0,19)}</div></div>
-    ${scored.length>1?`<div class="chart-card"><canvas id="scC"></canvas></div>`:''}
-    <div class="solution-card"><div class="solution-body">${md(dream.final_solution||'无方案')}</div></div>
-    <div class="action-bar">
-      ${dream.status!=='applied'?`<button class="btn-apply" onclick="applyDream('${dream.id}')">✓ 标记已应用</button>`:''}
-      <button class="btn-obsidian" onclick="openObsidian()">📓 Obsidian</button>
-      <button class="btn-challenge" onclick="openChallenge('${dream.id}')">⚡ 挑战</button>
-      <button class="btn-export" onclick="exportDream('${dream.id}')">📥 导出</button>
-      <button class="btn-delete" onclick="deleteDream('${dream.id}')">🗑 删除</button>
+  $('#viewDetail').innerHTML=`
+    <div class="detail-header">
+      <div class="breadcrumb" onclick="navigate('home')">← 返回阅览室</div>
+      <h2>${dream.motif||'未知母题'}</h2>
+    </div>
+    <div class="meta-strip">
+      <span>${dream.id}</span><span>${dream.iterations||0} 轮</span>
+      <span>${dream.status||''}</span><span>${dream.convergence_reason||''}</span>
+    </div>
+    <div class="score-plaque">
+      <div class="ring" style="color:${sc};border-color:${sc}">${s.toFixed(1)}</div>
+      <div class="stats">
+        <div>迭代轮数 <b>${dream.iterations||0}</b></div>
+        <div>结束原因 <b>${dream.convergence_reason||'—'}</b></div>
+        <div>时间 <b>${(dream.created_at||dream.start_time||'').slice(0,19)}</b></div>
+      </div>
+    </div>
+    ${scored.length>1?`<div class="chart-box"><h4 style="font-family:var(--serif);font-style:italic;font-size:15px;color:var(--text-dim);margin-bottom:20px">演化轨迹</h4><canvas id="scC"></canvas></div>`:''}
+    <div class="solution-box"><h4 style="font-family:var(--serif);font-style:italic;font-size:15px;color:var(--text-dim);margin-bottom:20px">完整方案</h4><div class="body">${md(dream.final_solution||'方案未记录')}</div></div>
+    <div class="action-strip">
+      ${dream.status!=='applied'?`<button class="primary" onclick="applyDream('${dream.id}')">✓ 采纳此方案</button>`:''}
+      <button onclick="openChallenge('${dream.id}')">⚡ 深入挑战</button>
+      <button onclick="exportDream('${dream.id}')">↓ 导出观测记录</button>
+      <button class="caution" onclick="deleteDream('${dream.id}')">删除</button>
     </div>`;
-  if(scored.length>1)setTimeout(()=>drawChart(scored),100)
+  if(scored.length>1)setTimeout(()=>drawChart(scored),150)
 }
 function md(t){return(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/^### (.+)$/gm,'<h3>$1</h3>').replace(/^## (.+)$/gm,'<h2>$1</h2>').replace(/^# (.+)$/gm,'<h1>$1</h1>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'<code>$1</code>')}
 function drawChart(data){
-  const c=document.getElementById('scC');if(!c)return;const ctx=c.getContext('2d');const W=c.parentElement.clientWidth-48,H=200;
+  const c=document.getElementById('scC');if(!c)return;const ctx=c.getContext('2d'),W=c.parentElement.clientWidth-48,H=220;
   c.width=W*2;c.height=H*2;c.style.width=W+'px';c.style.height=H+'px';ctx.scale(2,2);
-  const pad={t:24,r:20,b:32,l:44},pw=W-pad.l-pad.r,ph=H-pad.t-pad.b;
+  const pad={t:24,r:24,b:36,l:48},pw=W-pad.l-pad.r,ph=H-pad.t-pad.b;
   const xs=data.map(d=>d.round||0),ys=data.map(d=>d.score||0),xM=Math.min(...xs),xX=Math.max(...xs)||1;
   const sx=v=>pad.l+(v-xM)/(xX-xM)*pw,sy=v=>pad.t+(1-v/10)*ph;
-  ctx.strokeStyle='rgba(255,255,255,0.06)';ctx.lineWidth=1;
-  for(let y=0;y<=10;y+=2){const py=sy(y);ctx.beginPath();ctx.moveTo(pad.l,py);ctx.lineTo(W-pad.r,py);ctx.stroke();ctx.fillStyle='var(--muted)';ctx.font='11px Inter';ctx.textAlign='right';ctx.fillText(y,pad.l-8,py+4)}
-  ctx.strokeStyle='#8b5cf6';ctx.lineWidth=2.5;ctx.beginPath();ctx.shadowColor='rgba(139,92,246,0.4)';ctx.shadowBlur=8;
+  ctx.strokeStyle='rgba(200,180,150,0.06)';ctx.lineWidth=1;
+  for(let y=0;y<=10;y+=2){const py=sy(y);ctx.beginPath();ctx.moveTo(pad.l,py);ctx.lineTo(W-pad.r,py);ctx.stroke();ctx.fillStyle='rgba(138,128,120,0.5)';ctx.font='10px DM Sans';ctx.textAlign='right';ctx.fillText(y,pad.l-6,py+4)}
+  ctx.strokeStyle='#e2a654';ctx.lineWidth=2;ctx.beginPath();ctx.shadowColor='rgba(226,166,84,0.3)';ctx.shadowBlur=10;
   data.forEach((d,i)=>{const px=sx(d.round),py=sy(d.score);i===0?ctx.moveTo(px,py):ctx.lineTo(px,py)});ctx.stroke();ctx.shadowBlur=0;
-  data.forEach(d=>{const px=sx(d.round),py=sy(d.score);ctx.beginPath();ctx.arc(px,py,4,0,Math.PI*2);ctx.fillStyle=d.score>=8?'#10b981':d.score>=6?'#f59e0b':'#ef4444';ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke()});
-  ctx.fillStyle='rgba(255,255,255,0.3)';ctx.textAlign='center';for(let i=0;i<data.length;i+=Math.max(1,Math.floor(data.length/8)))ctx.fillText(data[i].round,sx(data[i].round),H-8)
+  data.forEach(d=>{const px=sx(d.round),py=sy(d.score);ctx.beginPath();ctx.arc(px,py,4,0,Math.PI*2);ctx.fillStyle=d.score>=8?'#8b9e6e':d.score>=6?'#e2a654':'#c46040';ctx.fill();ctx.strokeStyle='#0f1520';ctx.lineWidth=1.5;ctx.stroke()});
+  ctx.fillStyle='rgba(138,128,120,0.4)';ctx.textAlign='center';for(let i=0;i<data.length;i+=Math.max(1,Math.floor(data.length/8)))ctx.fillText(data[i].round,sx(data[i].round),H-8)
 }
 
 // ── Actions ──
-async function startDream(){const m=qs('#mi').value;try{await api('/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({motif:m||null})});qs('#mi').value='';pollStatus();loadHistory();toast('🌙 梦境已启动')}catch(e){toast('启动失败','#ef4444')}}
-async function stopDream(){try{await api('/stop',{method:'POST'});pollStatus();loadHistory();toast('梦境已中断')}catch(e){}}
-async function applyDream(id){await api('/'+id+'/apply',{method:'POST'});toast('✓ 已标记为已应用');selectDream(id)}
-async function deleteDream(id){if(!confirm('删除此梦境？'))return;await api('/'+id,{method:'DELETE'});selId=null;showView('main')}
-async function exportDream(id){const d=await api('/'+id);const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(d,null,2)],{type:'application/json'}));a.download='dream-'+id+'.json';a.click();toast('📥 已导出')}
-function openObsidian(){toast('在 Obsidian 同步设置中配置路径')}
-function openChallenge(id){const o=document.createElement('div');o.style='position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:100;display:flex;align-items:center;justify-content:center';
-  o.innerHTML=`<div style="background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:28px;width:460px;max-width:90vw"><h3 style="margin-bottom:8px">⚡ 挑战此方案</h3><p style="font-size:13px;color:var(--muted);margin-bottom:16px">提出质疑，AI 将针对性完善</p><textarea id="chT" style="width:100%;height:100px;padding:12px;border-radius:8px;font-size:13px;border:1px solid var(--border);background:rgba(255,255,255,0.04);color:var(--text);outline:none;resize:vertical"placeholder="方案忽略了实现成本..."></textarea>
-    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><button onclick="this.closest(\\`[style]\\`).remove()" style="padding:8px 18px;border-radius:8px;border:none;background:rgba(255,255,255,0.06);color:var(--muted);cursor:pointer;font-size:13px">取消</button><button onclick="runChallenge()" style="padding:8px 18px;border-radius:8px;border:none;background:var(--purple);color:#fff;cursor:pointer;font-size:13px">发起挑战</button></div></div>`;
-  document.body.appendChild(o);o.addEventListener('click',e=>e.target===o&&o.remove())
-}
-async function runChallenge(){const t=document.getElementById('chT')?.value;if(!t?.trim())return;document.querySelector('[style*="fixed"]').remove();qs('#mi').value='挑战: '+t.slice(0,80);startDream();toast('⚡ 挑战梦境已启动')}
+async function startDream(){const m=$('#motifInput').value;try{await api('/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({motif:m||null})});$('#motifInput').value='';pollStatus();loadHistory();toast('🌙 新梦境已开启')}catch(e){toast('启动失败')}}
+async function stopDream(){try{await api('/stop',{method:'POST'});pollStatus();loadHistory();toast('观测已中断')}catch(e){}}
+async function applyDream(id){await api('/'+id+'/apply',{method:'POST'});toast('✓ 方案已采纳');selectDream(id)}
+async function deleteDream(id){if(!confirm('删除此观测记录？'))return;await api('/'+id,{method:'DELETE'});selId=null;navigate('home');loadHistory()}
+async function exportDream(id){const d=await api('/'+id);const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(d,null,2)],{type:'application/json'}));a.download='dream-'+id+'.json';a.click();toast('↓ 已导出')}
+function openChallenge(id){const o=document.createElement('div');o.className='modal-back';
+  o.innerHTML=`<div class="modal-card"><h3>深入挑战</h3><p>你对此方案有什么不同的看法？AI 将基于你的质疑启动一轮新的深度观测。</p><textarea id="chT" placeholder="例如：这个方案没有考虑到成本约束…"></textarea><div class="btns"><button onclick="this.closest('.modal-back').remove()">取消</button><button class="go" onclick="runChallenge()">发起观测</button></div></div>`;
+  document.body.appendChild(o);o.addEventListener('click',e=>e.target===o&&o.remove())}
+async function runChallenge(){const t=document.getElementById('chT')?.value;if(!t?.trim())return;document.querySelector('.modal-back')?.remove();$('#motifInput').value='挑战: '+t.slice(0,80);startDream();toast('⚡ 挑战观测已启动')}
 
 // ── Settings ──
-function renderSettings(){const v=document.getElementById('viewSettings');
+function renderSettings(){
   const fields=[
-    {g:'模型与 API',items:[
-      {k:'cloud_enabled',l:'启用云端 API',h:'允许调用 DeepSeek API',t:'check'},
-      {k:'local_model',l:'本地模型 (Ollama)',h:'如 qwen3.5:9b',t:'txt'},
-      {k:'daily_token_limit',l:'每日 Token 上限',h:'防止费用失控',t:'num'},
+    {g:'观测镜 · 模型配置',rows:[
+      {k:'cloud_enabled',l:'启用云端 API (DeepSeek)',n:'取消勾选则使用本地 Ollama 模型',t:'check'},
+      {k:'cloud_model',l:'云端模型 (Genius/Critic/Refiner/Mutator)',n:'DeepSeek V4 或 R1 推理模型',t:'sel',o:['deepseek-chat','deepseek-reasoner']},
+      {k:'judge_model',l:'Judge 裁判模型',n:'建议始终使用云端高精度模型以保证评判可信度',t:'sel',o:['deepseek-chat','deepseek-reasoner']},
+      {k:'local_model',l:'本地模型 (Ollama)',n:'云端 API 关闭时生效，需先启动 ollama serve',t:'txt',dv:'qwen3.5:9b'},
     ]},
-    {g:'梦境参数',items:[
-      {k:'enabled',l:'启用梦境',h:'关闭后不影响主 Agent',t:'check'},
-      {k:'idle_timeout_seconds',l:'空闲超时（分钟）',h:'连续无操作自动触发',t:'num',dv:15,m:120},
-      {k:'max_iterations',l:'最大迭代轮数',t:'num',dv:100,m:500},
-      {k:'convergence_rounds',l:'收敛判定轮数',h:'连续N轮无提升即收敛',t:'num',dv:20,m:100},
-      {k:'mutation_interval',l:'变异器间隔',h:'每N轮注入跨域变异',t:'num',dv:10,m:50},
-      {k:'max_dream_duration_minutes',l:'最大时长（分钟）',h:'超时自动终止',t:'num',dv:60,m:480},
+    {g:'梦境 · 迭代与调度',rows:[
+      {k:'enabled',l:'启用梦境服务',n:'关闭后不影响主 Agent，仅停止自主梦境',t:'check'},
+      {k:'idle_timeout_seconds',l:'空闲触发时间（分钟）',n:'连续无操作 X 分钟后自动开始观测',t:'num',dv:15},
+      {k:'max_iterations',l:'最大迭代轮数',n:'单次梦境的最大对弈轮数',t:'num',dv:100},
+      {k:'convergence_rounds',l:'收敛判定轮数',n:'连续 X 轮评分无提升则自动停止',t:'num',dv:20},
+      {k:'mutation_interval',l:'变异注入间隔',n:'每 X 轮注入一次跨领域视角 (Mutator)',t:'num',dv:10},
+      {k:'max_dream_duration_minutes',l:'最大梦境时长（分钟）',n:'超时自动终止，防止云端费用失控',t:'num',dv:60},
+      {k:'checkpoint_interval',l:'检查点保存间隔',n:'每 X 轮保存一次中间结果',t:'num',dv:10},
     ]},
-    {g:'集成',items:[
-      {k:'obsidian_vault_path',l:'Obsidian Vault 路径',h:'设置后自动同步',t:'txt'},
-      {k:'dream_folder',l:'梦境笔记目录',t:'txt',dv:'Dreams'},
-      {k:'notification',l:'启用通知',t:'check'},
+    {g:'用量监控',rows:[
+      {k:'daily_token_limit',l:'每日 Token 上限',n:'超过后暂停云端调用，防止费用失控',t:'num',dv:100000},
     ]},
-    {g:'资源管控',items:[
-      {k:'resource_cpu_threshold',l:'CPU 阈值 (%)',h:'超阈值延迟启动',t:'num',dv:80},
-      {k:'resource_memory_threshold',l:'内存阈值 (%)',t:'num',dv:85},
+    {g:'Obsidian 知识同步',rows:[
+      {k:'obsidian_vault_path',l:'Obsidian Vault 路径',n:'如 D:/obsidian/obsidian',t:'txt'},
+      {k:'dream_folder',l:'梦境笔记目录',n:'Vault 内的子目录名',t:'txt',dv:'Dreams'},
+      {k:'notification',l:'完成后通知',n:'非阻塞 toast 提示梦境已完成',t:'check'},
+    ]},
+    {g:'资源管控',rows:[
+      {k:'resource_cpu_threshold',l:'CPU 阈值 (%)',n:'超过时延迟启动，等待资源释放',t:'num',dv:80},
+      {k:'resource_memory_threshold',l:'内存阈值 (%)',n:'超过时延迟启动',t:'num',dv:85},
     ]},
   ];
-  v.innerHTML=fields.map(g=>`<div class="settings-card"><div style="padding:14px 0 4px;font-size:13px;font-weight:600;color:var(--muted)">${g.g}</div>${g.items.map(f=>{
-    const id='s_'+f.k;
-    if(f.t==='check')return `<div class="setting-row"><label>${f.l}${f.h?`<div class="hint">${f.h}</div>`:''}</label><input type="checkbox" id="${id}"></div>`;
-    if(f.t==='txt')return `<div class="setting-row"><label>${f.l}${f.h?`<div class="hint">${f.h}</div>`:''}</label><input type="text" id="${id}"></div>`;
-    return `<div class="setting-row"><label>${f.l}${f.h?`<div class="hint">${f.h}</div>`:''}</label><input type="number" id="${id}" ${f.m?`max="${f.m}"`:''}></div>`
-  }).join('')}</div>`).join('')+
-  `<button onclick="saveSettings()" style="width:100%;padding:12px;border-radius:8px;border:none;background:var(--purple);color:#fff;font-size:14px;font-family:inherit;font-weight:600;cursor:pointer">💾 保存设置</button>`
-
-  // Load current config into form
+  $('#viewSettings').innerHTML=`<div class="settings-grid">
+    ${fields.map(g=>`<div class="setting-block"><div class="block-title">${g.g}</div>
+    ${g.rows.map(f=>{
+      if(f.t==='check') return `<div class="row"><div><label>${f.l}</label>${f.n?`<div class="note">${f.n}</div>`:''}</div><input type="checkbox" id="s_${f.k}"></div>`;
+      if(f.t==='sel') return `<div class="row"><div><label>${f.l}</label>${f.n?`<div class="note">${f.n}</div>`:''}</div><select id="s_${f.k}" style="width:180px;padding:7px 12px;border-radius:6px;font-size:12px;font-family:var(--sans);border:1px solid var(--border);background:rgba(255,255,255,0.02);color:var(--text);outline:none">${f.o.map(v=>`<option value="${v}">${v}</option>`).join('')}</select></div>`;
+      if(f.t==='txt') return `<div class="row"><div><label>${f.l}</label>${f.n?`<div class="note">${f.n}</div>`:''}</div><input type="text" id="s_${f.k}" value="${f.dv||''}"></div>`;
+      return `<div class="row"><div><label>${f.l}</label>${f.n?`<div class="note">${f.n}</div>`:''}</div><input type="number" id="s_${f.k}" value="${f.dv||0}"></div>`
+    }).join('')}</div>`).join('')}
+    <button class="settings-save" onclick="saveSettings()">保存全部配置</button></div>`;
   loadSettings();
 }
 async function loadSettings(){
-  try{
-    const c=await api('/config');
-    for(const[k,v]of Object.entries(c)){const e=document.getElementById('s_'+k);if(e){if(e.type==='checkbox')e.checked=!!v;else e.value=v}}
-    // Update model selector
-    if(c.cloud_enabled){qs('#mLocal').classList.remove('active');qs('#mCloud').classList.add('active')}
-    else{qs('#mCloud').classList.remove('active');qs('#mLocal').classList.add('active')}
-  }catch(e){console.error('load config:',e)}
+  try{const c=await api('/config');
+    for(const[k,v]of Object.entries(c)){const e=document.getElementById('s_'+k);if(e){e.tagName==='SELECT'?e.value=v:e.type==='checkbox'?e.checked=!!v:e.value=v}}
+    c.cloud_enabled?($('#tabLocal').classList.remove('active'),$('#tabCloud').classList.add('active')):($('#tabCloud').classList.remove('active'),$('#tabLocal').classList.add('active'))
+  }catch(e){console.error(e)}
 }
 async function saveSettings(){
-  const v=document.getElementById('viewSettings');
-  const fields=['cloud_enabled','local_model','daily_token_limit','enabled','idle_timeout_seconds','max_iterations','convergence_rounds','mutation_interval','max_dream_duration_minutes','obsidian_vault_path','dream_folder','notification','resource_cpu_threshold','resource_memory_threshold'];
-  const body={};
-  for(const k of fields){const e=document.getElementById('s_'+k);if(e)body[k]=e.type==='checkbox'?e.checked:isNaN(Number(e.value))?e.value:Number(e.value)}
-  try{
-    await api('/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-    // Update model selector
-    if(body.cloud_enabled){qs('#mLocal').classList.remove('active');qs('#mCloud').classList.add('active')}
-    else{qs('#mCloud').classList.remove('active');qs('#mLocal').classList.add('active')}
-    toast('💾 设置已保存')
-  }catch(e){toast('保存失败','#ef4444')}
+  const keys=['cloud_enabled','cloud_model','judge_model','local_model','daily_token_limit','enabled','idle_timeout_seconds','max_iterations','convergence_rounds','mutation_interval','max_dream_duration_minutes','checkpoint_interval','obsidian_vault_path','dream_folder','notification','resource_cpu_threshold','resource_memory_threshold'];
+  const body={};keys.forEach(k=>{const e=document.getElementById('s_'+k);if(e)body[k]=e.tagName==='SELECT'?e.value:e.type==='checkbox'?e.checked:isNaN(Number(e.value))?e.value:Number(e.value)});
+  try{await api('/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    body.cloud_enabled?($('#tabLocal').classList.remove('active'),$('#tabCloud').classList.add('active')):($('#tabCloud').classList.remove('active'),$('#tabLocal').classList.add('active'));
+    toast('配置已保存')}catch(e){toast('保存失败')}
 }
 
 // ── Init ──
-showWelcome();pollStatus();loadHistory();
-_timer=setInterval(pollStatus,3000);
+renderHome();pollStatus();loadHistory();_timer=setInterval(pollStatus,4000);
 </script>
 </body>
 </html>
