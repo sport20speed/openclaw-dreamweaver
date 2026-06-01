@@ -168,8 +168,11 @@ def cmd_serve(args: argparse.Namespace) -> None:
         sys.exit(1)
 
     cloud_model = os.environ.get("CLOUD_MODEL") or _read_env("CLOUD_MODEL") or "deepseek-chat"
+    judge_model = os.environ.get("JUDGE_MODEL") or _read_env("JUDGE_MODEL") or "deepseek-chat"
     llm = get_provider(use_local=use_local, local_model=local_model, cloud_model=cloud_model, api_key=api_key)
+    judge_llm = get_provider(use_local=False, cloud_model=judge_model, api_key=api_key)  # Judge always cloud
     model_label = f"Ollama {local_model}" if use_local else cloud_model
+    print(f"🧠 模型: {model_label} | Judge: {judge_model}")
     print(f"🧠 模型: {model_label}")
     config = DreamWeaverConfig()
     repo = DreamRepository(args.db or "dreamweaver.db")
@@ -204,7 +207,7 @@ def cmd_serve(args: argparse.Namespace) -> None:
                 vault_path=vault_path, dream_folder=dream_folder))
             print(f"📓 Obsidian sync: {vault_path}/{dream_folder}")
 
-        svc = DreamService(config, llm)
+        svc = DreamService(config, llm, judge_llm=judge_llm)
         router = create_router(svc, repo)
         app.include_router(router)
 

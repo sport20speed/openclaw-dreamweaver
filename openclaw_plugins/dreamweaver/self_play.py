@@ -111,8 +111,9 @@ MUTATION_PARADIGMS = [
 
 
 class SelfPlayEngine:
-    def __init__(self, llm: LLMProvider, config: Optional[SelfPlayConfig] = None) -> None:
+    def __init__(self, llm: LLMProvider, config: Optional[SelfPlayConfig] = None, *, judge_llm: Optional[LLMProvider] = None) -> None:
         self._llm = llm
+        self._judge_llm = judge_llm or llm  # fallback to main LLM if no separate judge
         self._config = config or SelfPlayConfig()
 
     async def run(self, motif: str, stop_signal: Optional[asyncio.Event] = None,
@@ -201,7 +202,7 @@ class SelfPlayEngine:
 
     async def _judge_compare(self, motif: str, solution_a: str, solution_b: str) -> dict[str, Any]:
         prompt = JUDGE_PROMPT.format(motif=motif, solution_A=solution_a, solution_B=solution_b)
-        response, tokens = await self._llm.generate(system_prompt=prompt, temperature=self._config.judge_model_temperature, max_tokens=self._config.max_tokens_per_call)
+        response, tokens = await self._judge_llm.generate(system_prompt=prompt, temperature=self._config.judge_model_temperature, max_tokens=self._config.max_tokens_per_call)
         verdict = self._parse_judge_response(response)
         return {"text": response, "log": IterationLog(round=-1, role="judge", prompt=prompt, response=response, score=verdict.score_a, tokens_used=tokens), "verdict": verdict}
 

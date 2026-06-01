@@ -25,11 +25,13 @@ StatusCallback = Callable[[dict[str, Any]], Any]
 
 class DreamService:
     def __init__(self, config: DreamWeaverConfig, llm: LLMProvider, *,
+                 judge_llm: Optional[LLMProvider] = None,
                  motif_generator: Optional[MotifGenerator] = None,
                  writer: Optional[ObsidianWriter] = None,
                  resource_monitor: Optional[ResourceMonitor] = None) -> None:
         self._config = config
         self._llm = llm
+        self._judge_llm = judge_llm or llm
         self._motif_gen = motif_generator
         self._writer = writer
         self._resources = resource_monitor or ResourceMonitor()
@@ -134,7 +136,7 @@ class DreamService:
                 checkpoint_interval=self._config.checkpoint_interval,
                 mutation_interval=self._config.mutation_interval,
             )
-            engine = SelfPlayEngine(self._llm, play_config)
+            engine = SelfPlayEngine(self._llm, play_config, judge_llm=self._judge_llm)
 
             async def on_checkpoint(result: DreamResult) -> None:
                 self._current_round = result.total_iterations
