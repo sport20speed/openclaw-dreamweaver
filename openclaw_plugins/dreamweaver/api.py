@@ -32,6 +32,37 @@ def create_router(
 
     router = APIRouter(prefix="/dream", tags=["dreamweaver"])
 
+    # ── Config ────────────────────────────────────────────────
+
+    @router.get("/config")
+    async def get_config() -> dict:
+        """Return current runtime config."""
+        c = service._config
+        return {
+            "enabled": c.enabled,
+            "idle_timeout_seconds": c.idle_timeout_seconds,
+            "max_iterations": c.max_iterations,
+            "convergence_rounds": c.convergence_rounds,
+            "mutation_interval": c.mutation_interval,
+            "max_dream_duration_minutes": c.max_dream_duration_minutes,
+            "cloud_enabled": c.cloud_enabled,
+            "local_model": c.local_model,
+            "daily_token_limit": c.daily_token_limit,
+            "notification": c.notification,
+            "obsidian_vault_path": c.obsidian_vault_path,
+            "dream_folder": c.dream_folder,
+            "resource_cpu_threshold": c.resource_cpu_threshold,
+            "resource_memory_threshold": c.resource_memory_threshold,
+        }
+
+    @router.post("/config")
+    async def update_config(body: dict) -> dict:
+        """Update runtime config. Send only the fields to change."""
+        for key, val in body.items():
+            if hasattr(service._config, key):
+                setattr(service._config, key, val)
+        return {"ok": True}
+
     # ── Status ────────────────────────────────────────────────
 
     @router.get("/status", response_model=DreamStatusResponse)
