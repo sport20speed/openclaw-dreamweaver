@@ -167,8 +167,9 @@ def cmd_serve(args: argparse.Namespace) -> None:
         print("❌ 未找到 DEEPSEEK_API_KEY，设置 LOCAL_MODEL=qwen3.5:9b 使用本地模型")
         sys.exit(1)
 
-    llm = get_provider(use_local=use_local, local_model=local_model, api_key=api_key)
-    model_label = f"Ollama {local_model}" if use_local else "DeepSeek V4 Pro"
+    cloud_model = os.environ.get("CLOUD_MODEL") or _read_env("CLOUD_MODEL") or "deepseek-chat"
+    llm = get_provider(use_local=use_local, local_model=local_model, cloud_model=cloud_model, api_key=api_key)
+    model_label = f"Ollama {local_model}" if use_local else cloud_model
     print(f"🧠 模型: {model_label}")
     config = DreamWeaverConfig()
     repo = DreamRepository(args.db or "dreamweaver.db")
