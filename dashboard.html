@@ -391,7 +391,7 @@ const toast=m=>{const t=document.createElement('div');t.className='note';t.textC
 async function api(u,o){const r=await fetch(API+u,o);if(!r.ok)throw Error(r.status);return r.json()}
 
 // ── Navigation ──
-const _views={'home':'viewHome','detail':'viewDetail','settings':'viewSettings'};
+const _views={'home':'#viewHome','detail':'#viewDetail','settings':'#viewSettings'};
 function navigate(v){
   Object.entries(_views).forEach(([k,id])=>$(id).classList.toggle('on',k===v));
   if(v==='home')renderHome();
