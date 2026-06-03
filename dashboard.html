@@ -506,18 +506,59 @@ function renderDetail(dream,iter){
   if(scored.length>1)setTimeout(()=>drawChart(scored),150)
 }
 function md(t){return(t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/^### (.+)$/gm,'<h3>$1</h3>').replace(/^## (.+)$/gm,'<h2>$1</h2>').replace(/^# (.+)$/gm,'<h1>$1</h1>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'<code>$1</code>')}
+let _allIterations=[]; // Store for detail panel access
 function drawChart(data){
-  const c=document.getElementById('scC');if(!c)return;const ctx=c.getContext('2d'),W=c.parentElement.clientWidth-48,H=220;
+  _allIterations=data;
+  const c=document.getElementById('scC');if(!c)return;const ctx=c.getContext('2d'),W=c.parentElement.clientWidth-48,H=260;
   c.width=W*2;c.height=H*2;c.style.width=W+'px';c.style.height=H+'px';ctx.scale(2,2);
-  const pad={t:24,r:24,b:36,l:48},pw=W-pad.l-pad.r,ph=H-pad.t-pad.b;
+  c.style.cursor='pointer';c.title='点击节点查看该轮详情';
+  c.onclick=function(e){const rect=c.getBoundingClientRect();const mx=(e.clientX-rect.left)*(W/rect.width),my=(e.clientY-rect.top)*(H/rect.height);
+    const pad={t:24,r:24,b:36,l:48},pw=W-pad.l-pad.r,ph=H-pad.t-pad.b;
+    const xs=data.map(d=>d.round||0),ys=data.map(d=>d.score||0),xM=Math.min(...xs),xX=Math.max(...xs)||1;
+    const sx=v=>pad.l+(v-xM)/(xX-xM)*pw,sy=v=>pad.t+(1-v/10)*ph;
+    for(let i=0;i<data.length;i++){const px=sx(data[i].round),py=sy(data[i].score);
+      if(Math.hypot(mx-px,my-py)<12){showRoundDetail(i);return}}
+  };
+  const pad={t:24,r:24,b:50,l:48},pw=W-pad.l-pad.r,ph=H-pad.t-pad.b;
   const xs=data.map(d=>d.round||0),ys=data.map(d=>d.score||0),xM=Math.min(...xs),xX=Math.max(...xs)||1;
   const sx=v=>pad.l+(v-xM)/(xX-xM)*pw,sy=v=>pad.t+(1-v/10)*ph;
+  // Grid
   ctx.strokeStyle='rgba(200,180,150,0.06)';ctx.lineWidth=1;
   for(let y=0;y<=10;y+=2){const py=sy(y);ctx.beginPath();ctx.moveTo(pad.l,py);ctx.lineTo(W-pad.r,py);ctx.stroke();ctx.fillStyle='rgba(138,128,120,0.5)';ctx.font='10px DM Sans';ctx.textAlign='right';ctx.fillText(y,pad.l-6,py+4)}
+  // Spike highlight (score jump > 1.5)
+  let prevScore=null;
+  data.forEach((d,i)=>{
+    if(prevScore!==null&&d.score-prevScore>1.5){const px=sx(d.round),py=sy(d.score);
+      ctx.fillStyle='rgba(226,166,84,0.06)';ctx.beginPath();ctx.arc(px,py,16,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='rgba(251,191,36,0.4)';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(px,py,16,0,Math.PI*2);ctx.stroke()}
+    prevScore=d.score;
+  });
+  // Line
   ctx.strokeStyle='#e2a654';ctx.lineWidth=2;ctx.beginPath();ctx.shadowColor='rgba(226,166,84,0.3)';ctx.shadowBlur=10;
   data.forEach((d,i)=>{const px=sx(d.round),py=sy(d.score);i===0?ctx.moveTo(px,py):ctx.lineTo(px,py)});ctx.stroke();ctx.shadowBlur=0;
-  data.forEach(d=>{const px=sx(d.round),py=sy(d.score);ctx.beginPath();ctx.arc(px,py,4,0,Math.PI*2);ctx.fillStyle=d.score>=8?'#8b9e6e':d.score>=6?'#e2a654':'#c46040';ctx.fill();ctx.strokeStyle='#0f1520';ctx.lineWidth=1.5;ctx.stroke()});
-  ctx.fillStyle='rgba(138,128,120,0.4)';ctx.textAlign='center';for(let i=0;i<data.length;i+=Math.max(1,Math.floor(data.length/8)))ctx.fillText(data[i].round,sx(data[i].round),H-8)
+  // Nodes
+  data.forEach((d,i)=>{
+    const px=sx(d.round),py=sy(d.score),isMut=_allIterations.some(l=>l.round===d.round&&l.role==='mutator');
+    const r=isMut?7:5;
+    ctx.beginPath();ctx.arc(px,py,r,0,Math.PI*2);
+    ctx.fillStyle=isMut?'#c084fc':d.score>=8?'#8b9e6e':d.score>=6?'#e2a654':'#c46040';
+    ctx.fill();ctx.strokeStyle='#0f1520';ctx.lineWidth=1.5;ctx.stroke();
+    // Mutation glow
+    if(isMut){ctx.strokeStyle='rgba(192,132,252,0.35)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(px,py,r+5,0,Math.PI*2);ctx.stroke()}
+  });
+  // X labels
+  ctx.fillStyle='rgba(138,128,120,0.4)';ctx.textAlign='center';
+  for(let i=0;i<data.length;i+=Math.max(1,Math.floor(data.length/10)))ctx.fillText(data[i].round,sx(data[i].round),H-8);
+  ctx.fillStyle='rgba(138,128,120,0.3)';ctx.font='9px DM Sans';ctx.fillText('🟣 紫色=变异跃迁 · 点击节点查看详情',W/2,H+16);
+}
+function showRoundDetail(idx){
+  const data=_allIterations;if(!data.length)return;
+  const d=data[idx];const roundLogs=_allIterations.filter(l=>l.round===d.round);
+  const panel=document.createElement('div');panel.style='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:200;background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:28px;width:560px;max-width:90vw;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.6)';
+  panel.innerHTML=`<div style="display:flex;justify-content:space-between;margin-bottom:16px"><h3 style="font-family:var(--serif);font-style:italic">第 ${d.round} 轮 · 评分 ${d.score?.toFixed(1)||'—'}</h3><button onclick="this.closest('[style]').remove()" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:4px 12px;cursor:pointer;font-size:13px">✕</button></div>
+  ${roundLogs.map(l=>`<div style="margin-bottom:16px;border-left:2px solid ${l.role==='mutator'?'#c084fc':l.role==='judge'?'#e2a654':'rgba(200,180,150,0.2)'};padding-left:14px"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px">${l.role}</div><div style="font-size:13px;line-height:1.6;color:var(--text);white-space:pre-wrap;max-height:200px;overflow:auto">${(l.response||l.content||'').slice(0,800)}</div></div>`).join('')}`;
+  document.body.appendChild(panel);panel.addEventListener('click',e=>e.stopPropagation());
+  setTimeout(()=>document.addEventListener('click',function f(e){if(!panel.contains(e.target)){panel.remove();document.removeEventListener('click',f)}},{once:false}),100);
 }
 
 // ── Actions ──
