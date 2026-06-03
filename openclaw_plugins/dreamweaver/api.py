@@ -239,4 +239,28 @@ def create_router(
             return {"domains": {}, "today_tokens": 0, "daily_limit": 100000, "budget_pct": 0}
         return self_model.snapshot()
 
+    @router.get("/cost")
+    async def get_cost_summary() -> dict:
+        """Return token usage and estimated cost summary."""
+        if repo is None:
+            return {"total_tokens": 0, "estimated_cost": 0}
+        try:
+            conn = repo._get_conn()
+            rows = conn.execute(
+                "SELECT COALESCE(SUM(total_tokens),0) as total_tokens, COUNT(*) as count "
+                "FROM meta_training_data"
+            ).fetchone()
+            total_tokens = rows[0] if rows else 0
+            count = rows[1] if rows else 0
+            # DeepSeek pricing: flash ~$0.28/M tokens input, ~$1.10/M output. Avg ~$0.50/M
+            est_cost = round(total_tokens * 0.50 / 1_000_000, 4)
+            return {
+                "total_tokens": total_tokens,
+                "total_dreams": count,
+                "estimated_cost_usd": est_cost,
+                "avg_tokens_per_dream": total_tokens // count if count else 0,
+            }
+        except Exception:
+            return {"total_tokens": 0, "estimated_cost": 0}
+
     return router

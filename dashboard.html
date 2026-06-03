@@ -326,6 +326,7 @@ body::after {
     <span id="headerChip" class="status-chip idle"><span class="pulse-dot"></span>等待中</span>
     <span class="sep"></span>
     <button onclick="navigate('home')">阅览室</button>
+    <button onclick="navigate('meta')">元学习</button>
     <button onclick="navigate('settings')">配置</button>
     <button class="primary" onclick="focusTrigger()">新梦境</button>
     <button class="stop" id="btnStop" style="display:none" onclick="stopDream()">中断</button>
@@ -378,6 +379,7 @@ body::after {
   <main class="col-main">
     <div class="content on" id="viewHome"></div>
     <div class="content" id="viewDetail"></div>
+    <div class="content" id="viewMeta"></div>
     <div class="content" id="viewSettings"></div>
   </main>
 </div>
@@ -391,10 +393,11 @@ const toast=m=>{const t=document.createElement('div');t.className='note';t.textC
 async function api(u,o){const r=await fetch(API+u,o);if(!r.ok)throw Error(r.status);return r.json()}
 
 // ── Navigation ──
-const _views={'home':'#viewHome','detail':'#viewDetail','settings':'#viewSettings'};
+const _views={'home':'#viewHome','detail':'#viewDetail','meta':'#viewMeta','settings':'#viewSettings'};
 function navigate(v){
   Object.entries(_views).forEach(([k,id])=>$(id).classList.toggle('on',k===v));
   if(v==='home')renderHome();
+  if(v==='meta')renderMeta();
   if(v==='settings')renderSettings();
 }
 function focusTrigger(){$('#motifInput').focus();$('#motifInput').scrollIntoView({behavior:'smooth'})}
@@ -667,6 +670,68 @@ async function saveSettings(){
   try{await api('/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     body.cloud_enabled?($('#tabLocal').classList.remove('active'),$('#tabCloud').classList.add('active')):($('#tabCloud').classList.remove('active'),$('#tabLocal').classList.add('active'));
     toast('配置已保存')}catch(e){toast('保存失败')}
+}
+
+// ── Meta-Learning Panel ──
+async function renderMeta(){
+  let stats={total_episodes:0,model_ready:false,confidence:0},instincts=[],bandits=[],self={domains:{},today_tokens:0,daily_limit:100000,budget_pct:0};
+  try{stats=await api('/meta/stats')}catch(e){}
+  try{const r=await api('/meta/instincts');instincts=r.instincts||[]}catch(e){}
+  try{const r=await api('/prompt/bandit');bandits=r.arms||[]}catch(e){}
+  try{self=await api('/self-model')}catch(e){}
+  const domains=Object.entries(self.domains||{}).sort((a,b)=>b[1].avg_score-a[1].avg_score);
+
+  $('#viewMeta').innerHTML=`<div class="detail">
+    <h2 style="font-family:var(--serif);font-style:italic;font-size:24px;margin-bottom:24px">🧠 元学习中枢</h2>
+    <p style="color:var(--text-dim);font-size:13px;margin-bottom:32px">系统从每次梦境中学习——什么样的配置产出最好的方案？哪些领域我最擅长？Prompt 风格怎么选？</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:32px">
+      <div class="stat" style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center">
+        <div style="font-family:var(--serif);font-size:32px;color:var(--moon)">${stats.total_episodes||0}</div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:4px">训练样本</div>
+      </div>
+      <div class="stat" style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center">
+        <div style="font-family:var(--serif);font-size:32px;color:${stats.model_ready?'var(--green)':'var(--text-muted)'}">${stats.model_ready?'✓':'…'}</div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:4px">模型就绪 ${stats.confidence>0?'('+(stats.confidence*100).toFixed(0)+'%)':'(需20+样本)'}</div>
+      </div>
+      <div class="stat" style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center">
+        <div style="font-family:var(--serif);font-size:32px;color:${self.budget_pct>80?'var(--red)':'var(--text-dim)'}">${self.today_tokens||0}</div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:4px">今日Token / ${(self.daily_limit||100000).toLocaleString()}</div>
+      </div>
+    </div>
+
+    <div class="chart-box" style="margin-bottom:24px">
+      <h4 style="font-family:var(--serif);font-style:italic;font-size:15px;color:var(--text-dim);margin-bottom:16px">🏷 领域能力矩阵</h4>
+      ${domains.length?domains.map(([k,v])=>`<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
+        <span style="width:80px;font-size:13px;color:var(--text)">${k}</span>
+        <div style="flex:1;height:6px;border-radius:3px;background:rgba(255,255,255,0.04);overflow:hidden">
+          <div style="width:${(v.avg_score/10*100).toFixed(0)}%;height:100%;border-radius:3px;background:${v.avg_score>=8?'var(--green)':v.avg_score>=6?'var(--moon)':'var(--red)'}"></div>
+        </div>
+        <span style="font-size:12px;font-weight:700;color:${v.avg_score>=8?'var(--green)':v.avg_score>=6?'var(--moon)':'var(--red)'};width:40px;text-align:right">${v.avg_score.toFixed(1)}</span>
+        <span style="font-size:11px;color:var(--text-muted);width:40px">${v.count||0}次</span>
+        <span style="font-size:11px;color:var(--text-muted)">置信${v.confidence?' '+(v.confidence*100).toFixed(0)+'%':''}</span>
+      </div>`).join(''):'<div style="color:var(--text-muted);font-size:13px;text-align:center;padding:20px">尚无领域数据，运行更多梦境后自动积累</div>'}
+    </div>
+
+    <div class="chart-box" style="margin-bottom:24px">
+      <h4 style="font-family:var(--serif);font-style:italic;font-size:15px;color:var(--text-dim);margin-bottom:16px">🎲 Prompt Bandit 排名</h4>
+      ${bandits.length?bandits.map(b=>`<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px">
+        <span style="color:var(--text-dim);width:60px">${b.role}</span>
+        <span style="width:100px;color:${b.avg_reward>0?'var(--green)':'var(--text-dim)'}">${b.variant}</span>
+        <span style="color:var(--text-dim)">奖励:${b.avg_reward.toFixed(2)}</span>
+        <span style="color:var(--text-muted)">${b.pulls||0}次</span>
+        <span style="color:var(--text-muted);font-size:11px">temp:${b.params?.temperature||'?'}</span>
+      </div>`).join(''):'<div style="color:var(--text-muted);font-size:13px;text-align:center;padding:20px">尚无 Bandit 数据</div>'}
+    </div>
+
+    <div class="chart-box" style="margin-bottom:24px">
+      <h4 style="font-family:var(--serif);font-style:italic;font-size:15px;color:var(--text-dim);margin-bottom:16px">💡 蒸馏 Instincts</h4>
+      ${instincts.length?instincts.map(i=>`<div style="padding:12px 16px;border-radius:8px;border:1px solid var(--border);margin-bottom:8px;background:rgba(226,166,84,${i.confidence>0.5?0.08:0.03})">
+        <div style="font-size:13px;color:var(--text)">${i.recommendation}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px">置信度: ${(i.confidence*100).toFixed(0)}% · ${i.evidence_count}条证据</div>
+      </div>`).join(''):'<div style="color:var(--text-muted);font-size:13px;text-align:center;padding:20px">数据不足，需要≥3条同源数据才能蒸馏Instinct</div>'}
+    </div>
+  </div>`
 }
 
 // ── Replay ──
