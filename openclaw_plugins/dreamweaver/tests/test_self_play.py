@@ -198,7 +198,7 @@ def test_parse_markdown_fenced_json() -> None:
 def test_parse_invalid_response_fallback() -> None:
     response = "我无法判断这两个方案..."
     verdict = SelfPlayEngine._parse_judge_response(response)
-    assert verdict.score_a == 5.0
+    assert verdict.score_a == 6.0  # neutral default (anti-anchoring)
     assert verdict.winner == "B"
 
 

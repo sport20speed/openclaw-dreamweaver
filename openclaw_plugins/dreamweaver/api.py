@@ -205,4 +205,17 @@ def create_router(
         s = meta_learner.stats()
         return {"features": s.get("feature_importance", {})}
 
+    @router.get("/meta/instincts")
+    async def get_instincts() -> dict:
+        """Return distilled instincts with confidence scores (ECC pattern)."""
+        if meta_learner is None:
+            return {"instincts": []}
+        # Delegate to MetaCollector's distill method
+        from .meta_collector import MetaCollector
+        conn = __import__("sqlite3").connect(repo.path if repo else "dreamweaver.db")
+        mc = MetaCollector(conn)
+        instincts = mc.distill_instincts()
+        conn.close()
+        return {"instincts": instincts, "total": len(instincts)}
+
     return router

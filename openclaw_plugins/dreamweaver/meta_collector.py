@@ -139,6 +139,62 @@ class MetaCollector:
         except Exception:
             return 0
 
+    def distill_instincts(self) -> list[dict]:
+        """Distill meta-episodes into confidence-scored instincts (ECC pattern).
+
+        Each instinct is a pattern with confidence score (0.3=tentative, 0.9=near-certain).
+        Confidence increases with supporting evidence count and consistency.
+        """
+        try:
+            rows = self._conn.execute(
+                "SELECT motif_source, AVG(best_score) as avg_score, COUNT(*) as cnt, "
+                "AVG(genius_temp) as avg_genius_temp, AVG(max_iterations) as avg_iters, "
+                "AVG(duration_seconds) as avg_duration "
+                "FROM meta_training_data GROUP BY motif_source HAVING cnt >= 3"
+            ).fetchall()
+        except Exception:
+            return []
+
+        instincts = []
+        for row in rows:
+            cnt = row[1]  # count
+            base_confidence = min(0.9, 0.3 + cnt * 0.03)  # 3 episodes = 0.39, 20 = 0.9
+
+            instincts.append({
+                "pattern": f"motif_source={row[0]}",
+                "evidence_count": cnt,
+                "confidence": round(base_confidence, 2),
+                "finding": {
+                    "avg_score": round(row["avg_score"], 2),
+                    "avg_genius_temp": round(row["avg_genius_temp"], 2),
+                    "avg_iters": int(row["avg_iters"]),
+                    "avg_duration_s": round(row["avg_duration"], 0),
+                },
+                "recommendation": (
+                    f"For {row[0]} motifs (n={cnt}), "
+                    f"avg_score={row['avg_score']:.1f} with genius_temp={row['avg_genius_temp']:.2f}. "
+                    f"Confidence: {base_confidence:.2f}"
+                ),
+            })
+
+        # Global stats instinct
+        total = self.count()
+        if total >= 5:
+            all_scores = self._conn.execute(
+                "SELECT best_score, total_tokens, duration_seconds FROM meta_training_data"
+            ).fetchall()
+            avg_score = round(sum(r[0] for r in all_scores) / len(all_scores), 2)
+            avg_tokens = int(sum(r[1] for r in all_scores) / len(all_scores))
+            instincts.append({
+                "pattern": "global",
+                "evidence_count": total,
+                "confidence": min(0.9, 0.3 + total * 0.02),
+                "finding": {"avg_score": avg_score, "avg_tokens": avg_tokens},
+                "recommendation": f"Global avg: {avg_score}/10 over {total} dreams. {avg_tokens} tokens/dream avg.",
+            })
+
+        return instincts
+
     # ── Internal ───────────────────────────────────────────────────
 
     def _extract(
