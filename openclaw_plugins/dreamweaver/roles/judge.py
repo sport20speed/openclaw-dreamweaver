@@ -13,7 +13,7 @@ JUDGE_V3 = """公正评分两个方案（A=当前 B=历史最佳），0-10分。
 方案B：{solution_B}"""
 
 class JudgeRole(BaseRole):
-    role_name = "judge"; temperature = 0.05
+    role_name = "judge"; temperature = 0.05; max_tokens = 512
 
     async def execute(self, context: DreamContext) -> RoleOutput:
         prompt = JUDGE_V3.format(motif=context.motif, solution_A=context.current_solution, solution_B=context.best_solution)

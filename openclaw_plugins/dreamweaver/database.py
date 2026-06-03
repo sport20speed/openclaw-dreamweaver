@@ -214,15 +214,18 @@ class DreamRepository:
     # ── Persist full DreamResult ───────────────────────────────
 
     async def save_result(self, dream_id: str, result: DreamResult) -> None:
-        """One-shot: update dream row + insert all iteration logs."""
-        await self.update_dream(
-            dream_id,
-            status=result.convergence_reason,
-            end_time=_ts_iso(result.finished_at),
-            iterations=result.total_iterations,
-            best_score=result.best_score,
-            convergence_reason=result.convergence_reason,
+        """One-shot: upsert dream row + insert iteration logs."""
+        conn = self._get_conn()
+        # Use INSERT OR REPLACE to handle both new and existing dreams
+        conn.execute(
+            """INSERT OR REPLACE INTO dreams (id, motif, status, start_time, end_time,
+               iterations, best_score, convergence_reason, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (dream_id, result.motif, result.convergence_reason, _ts_iso(result.started_at),
+             _ts_iso(result.finished_at), result.total_iterations, result.best_score,
+             result.convergence_reason, _now_iso()),
         )
+        conn.commit()
         if result.logs:
             await self.insert_iterations(dream_id, result.logs)
 

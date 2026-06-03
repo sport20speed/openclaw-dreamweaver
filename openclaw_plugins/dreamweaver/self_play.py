@@ -77,7 +77,7 @@ class SelfPlayConfig:
     judge_model_temperature: float = 0.05
     creative_model_temperature: float = 0.8
     safety_ethics_check: bool = True
-    max_tokens_per_call: int = 4096
+    max_tokens_per_call: int = 2048
 
 
 class SelfPlayEngine:

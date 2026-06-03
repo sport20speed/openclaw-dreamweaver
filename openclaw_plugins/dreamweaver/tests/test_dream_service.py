@@ -27,7 +27,7 @@ class StubLLM:
             return "Genius 方案：一个激进的重构方案。参考 [[架构设计]]。", 100
         if "严厉的审稿人" in system_prompt:
             return "Critic 漏洞报告：1.过于激进 2.风险高 3.成本大 4.缺乏验证 5.依赖不明确", 100
-        if "公正的专家评委" in system_prompt:
+        if "公正评分" in system_prompt:
             return '{"score_A": 8.0, "score_B": 6.0, "winner": "A", "reason": "A更好"}', 100
         if "高级架构师" in system_prompt:
             return "Refiner 改进方案：保留创新点，增加风险缓解。", 100

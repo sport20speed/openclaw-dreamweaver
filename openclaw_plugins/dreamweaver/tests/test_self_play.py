@@ -49,7 +49,7 @@ class MockLLM:
             return self.genius_text, tokens
         if "严厉的审稿人" in system_prompt:
             return self.critic_text, tokens
-        if "公正的专家评委" in system_prompt:
+        if "公正评分" in system_prompt:
             if self._next_judge_is_mutator:
                 self._next_judge_is_mutator = False
                 return self._judge_mutator_json, tokens
