@@ -499,6 +499,7 @@ function renderDetail(dream,iter){
     <div class="solution-box"><h4 style="font-family:var(--serif);font-style:italic;font-size:15px;color:var(--text-dim);margin-bottom:20px">完整方案</h4><div class="body">${md(dream.final_solution||'方案未记录')}</div></div>
     <div class="action-strip">
       ${dream.status!=='applied'?`<button class="primary" onclick="applyDream('${dream.id}')">✓ 采纳此方案</button>`:''}
+      <button onclick="replayDream('${dream.id}')" style="background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.25);color:#a78bfa">▶ 回放演化</button>
       <button onclick="openChallenge('${dream.id}')">⚡ 深入挑战</button>
       <button onclick="exportDream('${dream.id}')">↓ 导出观测记录</button>
       <button class="caution" onclick="deleteDream('${dream.id}')">删除</button>
@@ -627,6 +628,25 @@ async function saveSettings(){
     body.cloud_enabled?($('#tabLocal').classList.remove('active'),$('#tabCloud').classList.add('active')):($('#tabCloud').classList.remove('active'),$('#tabLocal').classList.add('active'));
     toast('配置已保存')}catch(e){toast('保存失败')}
 }
+
+// ── Replay ──
+async function replayDream(id){
+  let iter=_allIterations;if(!iter.length){try{const d=await api('/'+id);iter=(d.iterations||[]).sort((a,b)=>(a.round||0)-(b.round||0))}catch(e){toast('加载失败');return}}
+  const overlay=document.createElement('div');overlay.className='modal-back';
+  overlay.innerHTML=`<div class="modal-card" style="width:640px;max-height:85vh;overflow-y:auto"><h3>▶ 梦境回放</h3><p id="rpRound" style="font-family:var(--serif);font-size:20px;font-style:italic;margin:12px 0">准备中…</p><div id="rpContent" style="font-size:13px;line-height:1.7;white-space:pre-wrap;max-height:50vh;overflow:auto;color:var(--text)"></div>
+    <div class="btns"><button onclick="this.closest('.modal-back').remove()">关闭</button><button class="go" id="rpBtn" onclick="replayStep()">开始回放 ▶</button></div></div>`;
+  document.body.appendChild(overlay);overlay.addEventListener('click',e=>e.target===overlay&&overlay.remove());
+  window._rpIdx=0;window._rpData=iter;window._rpTimer=null;
+}
+function replayStep(){
+  const d=window._rpData||[];if(!d.length)return;
+  const idx=window._rpIdx||0;if(idx>=d.length){document.getElementById('rpBtn').textContent='回放完成';clearInterval(window._rpTimer);return}
+  const l=d[idx];document.getElementById('rpRound').textContent=`第 ${l.round} 轮 · ${l.role}`;
+  document.getElementById('rpContent').textContent=(l.response||l.content||'').slice(0,1500);
+  document.getElementById('rpBtn').textContent=`继续 ▶ (${idx+1}/${d.length})`;
+  window._rpIdx=idx+1;
+}
+function replayAuto(){window._rpIdx=0;replayStep();window._rpTimer=setInterval(replayStep,2500);document.getElementById('rpBtn').textContent='⏸ 暂停';document.getElementById('rpBtn').onclick=()=>{clearInterval(window._rpTimer);document.getElementById('rpBtn').textContent='继续 ▶';document.getElementById('rpBtn').onclick=()=>{window._rpTimer=setInterval(replayStep,2500)}}}
 
 // ── Init ──
 renderHome();pollStatus();loadHistory();_timer=setInterval(pollStatus,4000);
