@@ -135,8 +135,9 @@ class SelfPlayEngine:
             current_score = j_out.score or 5.0
             s_current.score = current_score
 
-            verdict = j_out.metadata.get("verdict", {})
-            if verdict.get("winner") == "A":
+            verdict = j_out.metadata.get("verdict", {}) or {}
+            winner = verdict.get("winner") or verdict.get('"winner"', "B")
+            if winner == "A" and current_score > best_score:
                 s_best = Solution(content=s_current.content, round=iteration, role="refiner", score=current_score)
 
             if current_score > best_score:
@@ -165,8 +166,8 @@ class SelfPlayEngine:
                     best_solution=s_best.content, current_round=iteration))
                 logs.append(self._to_log(mj_out, round=iteration))
 
-                mj_verdict = mj_out.metadata.get("verdict", {})
-                if mj_verdict.get("winner") == "A":
+                mj_verdict = mj_out.metadata.get("verdict", {}) or {}
+                if (mj_verdict.get("winner") or mj_verdict.get('"winner"', "B")) == "A":
                     s_best = Solution(content=m_out.content, round=iteration,
                                       role="mutator", score=mj_out.score or 0)
                     best_score = mj_out.score or best_score
