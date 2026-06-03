@@ -187,7 +187,7 @@ class SelfPlayEngine:
 
     @staticmethod
     def _to_log(output: RoleOutput, round: int) -> IterationLog:
-        return IterationLog(round=round, role=output.role, prompt="", response=output.content,
+        return IterationLog(round=round, role=output.role, prompt=output.prompt or "", response=output.content,
                             score=output.score, tokens_used=output.tokens_used)
 
     @staticmethod

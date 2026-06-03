@@ -12,4 +12,4 @@ class GeniusRole(BaseRole):
     async def execute(self, context: DreamContext) -> RoleOutput:
         prompt = GENIUS_V3.format(motif=context.motif, best_solution_summary=context.best_solution_summary or "无")
         text, tokens = await self._call(prompt)
-        return RoleOutput(role="genius", content=text, tokens_used=tokens)
+        return RoleOutput(role="genius", content=text, prompt=prompt, tokens_used=tokens, temperature=self.temperature, model="deepseek-v4-flash")

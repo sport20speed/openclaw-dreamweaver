@@ -35,7 +35,22 @@ MUTATION_PARADIGMS = [
     # Abstract / Math
     "哥德尔不完备定理", "混沌理论中的蝴蝶效应", "分形几何的自相似性", "希尔伯特旅馆悖论",
     "莫比乌斯带", "四色定理的证明方法",
+    # Chinese Traditional (V1.1 §2.4)
+    "周易变卦", "孙子兵法奇正", "中医经络系统", "禅宗不二法门", "道家无为而治",
+    "围棋的势与地", "太极的刚柔相济", "水墨画的留白意境",
+    # Modern Cross-Discipline
+    "复杂适应系统", "博弈论演化均衡", "网络科学的弱连接理论", "涌现现象",
 ]
+
+# Domain mapping for context-aware paradigm selection (V1.1 §2.4)
+DOMAIN_GROUPS = {
+    "physics": ["量子隧穿效应", "熵增逆转", "超流体", "量子纠缠", "超导体的迈斯纳效应"],
+    "biology": ["水平基因转移", "蚂蚁信息素机制", "共生", "趋同进化", "拟态"],
+    "economics": ["纳什均衡", "拍卖机制设计", "公共物品博弈", "破窗效应"],
+    "art": ["负空间（留白美学）", "散点透视（中国山水画）", "极少主义雕塑"],
+    "chinese": ["周易变卦", "孙子兵法奇正", "中医经络系统", "禅宗不二法门", "道家无为而治"],
+    "cross": ["复杂适应系统", "博弈论演化均衡", "网络科学的弱连接理论", "涌现现象"],
+}
 
 MUTATOR_PROMPT_V2 = """你需要引入一个完全意想不到的跨领域范式来重构当前方案。
 
@@ -52,11 +67,30 @@ MUTATOR_PROMPT_V2 = """你需要引入一个完全意想不到的跨领域范式
 
 class MutatorRole(BaseRole):
     role_name = "mutator"
-    temperature = 1.0  # Maximum creativity for cross-domain leaps
+    temperature = 1.0
+
+    @staticmethod
+    def _pick_paradigm(context: DreamContext) -> str:
+        """Context-aware paradigm selection (V1.1 §2.4).
+        Classify solution domain, then pick from a DIFFERENT domain group.
+        """
+        # Quick domain classification based on keywords in the current solution
+        sol = context.current_solution.lower()
+        if any(w in sol for w in ["代码", "程序", "算法", "架构", "api"]):
+            avoid = ["physics", "biology", "chinese", "cross"]
+            candidates = sum([DOMAIN_GROUPS[d] for d in avoid if d in DOMAIN_GROUPS], [])
+        elif any(w in sol for w in ["市场", "投资", "交易", "套利", "收益"]):
+            avoid = ["biology", "art", "chinese"]
+            candidates = sum([DOMAIN_GROUPS[d] for d in avoid if d in DOMAIN_GROUPS], [])
+        elif any(w in sol for w in ["设计", "美学", "艺术", "创意", "音乐"]):
+            avoid = ["physics", "economics", "cross"]
+            candidates = sum([DOMAIN_GROUPS[d] for d in avoid if d in DOMAIN_GROUPS], [])
+        else:
+            candidates = MUTATION_PARADIGMS
+        return context.mutation_paradigm or random.choice(candidates) if candidates else random.choice(MUTATION_PARADIGMS)
 
     async def execute(self, context: DreamContext) -> RoleOutput:
-        # Use context paradigm if set, otherwise pick random
-        paradigm = context.mutation_paradigm or random.choice(MUTATION_PARADIGMS)
+        paradigm = self._pick_paradigm(context)
         prompt = MUTATOR_PROMPT_V2.format(
             motif=context.motif,
             solution=context.current_solution,
@@ -66,6 +100,9 @@ class MutatorRole(BaseRole):
         return RoleOutput(
             role="mutator",
             content=text,
+            prompt=prompt,
             tokens_used=tokens,
+            temperature=self.temperature,
+            model="deepseek-v4-flash",
             metadata={"paradigm": paradigm},
         )

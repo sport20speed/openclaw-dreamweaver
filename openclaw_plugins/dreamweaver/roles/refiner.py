@@ -13,4 +13,4 @@ class RefinerRole(BaseRole):
     async def execute(self, context: DreamContext) -> RoleOutput:
         prompt = REFINER_V3.format(motif=context.motif, solution=context.current_solution, critic_feedback=context.critic_feedback)
         text, tokens = await self._call(prompt)
-        return RoleOutput(role="refiner", content=text, tokens_used=tokens)
+        return RoleOutput(role="refiner", content=text, prompt=prompt, tokens_used=tokens, temperature=self.temperature, model="deepseek-v4-flash")

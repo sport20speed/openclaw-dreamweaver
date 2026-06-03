@@ -33,8 +33,11 @@ class RoleOutput:
     """Standardized output from any role."""
     role: str                                 # "genius" | "critic" | "judge" | "refiner" | "mutator"
     content: str                              # Main text output
+    prompt: str = ""                          # System prompt sent to LLM (P0 fix)
+    model: str = ""                           # Model used (P0 fix)
     score: Optional[float] = None             # Score if applicable (Judge)
     tokens_used: int = 0
+    temperature: float = 0.0                 # Temperature used (P0 fix)
     metadata: dict = field(default_factory=dict)  # Extra data (verdict JSON, etc.)
 
 
