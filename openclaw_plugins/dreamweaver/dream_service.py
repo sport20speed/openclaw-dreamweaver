@@ -93,6 +93,12 @@ class DreamService:
                     pass
         self._set_status(DreamStatus.INTERRUPTED)
         self._run_task = None
+        # ── 释放锁 ──
+        try:
+            if _os.path.exists(_lock):
+                _os.remove(_lock)
+        except Exception:
+            pass
         return self._last_result
 
     def status(self) -> DreamStatusResponse:
@@ -152,6 +158,12 @@ class DreamService:
                 self._set_status(DreamStatus.INTERRUPTED)
             else:
                 self._set_status(DreamStatus.COMPLETED)
+            # ── 释放锁 ──
+            try:
+                if _os.path.exists(_lock):
+                    _os.remove(_lock)
+            except Exception:
+                pass
 
             if self._writer and result.convergence_reason != "interrupted":
                 path = await self._writer.write(result)
@@ -168,6 +180,12 @@ class DreamService:
             logger.exception("Dream loop crashed")
             self._set_status(DreamStatus.FAILED)
             await self._push_status()
+            # ── 释放锁 ──
+            try:
+                if _os.path.exists(_lock):
+                    _os.remove(_lock)
+            except Exception:
+                pass
 
     def _set_status(self, s: DreamStatus) -> None:
         self._status = s

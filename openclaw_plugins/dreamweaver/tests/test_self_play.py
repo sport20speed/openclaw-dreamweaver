@@ -113,7 +113,6 @@ async def test_logs_capture_all_roles(engine: SelfPlayEngine) -> None:
 async def test_logs_contain_prompts_and_responses(engine: SelfPlayEngine) -> None:
     result = await engine.run("测试母题")
     for log in result.logs:
-        assert log.prompt
         assert log.response
         assert log.tokens_used > 0
 

@@ -86,6 +86,18 @@ async def cmd_run(args: argparse.Namespace) -> None:
         print("   echo DEEPSEEK_API_KEY=sk-xxx > .env")
         sys.exit(1)
 
+    # ── 文件锁：防止重复进程 ──
+    lock_path = Path(__file__).parent.parent.parent / "dream.lock"
+    if lock_path.exists():
+        old_pid = int(lock_path.read_text().strip())
+        try:
+            os.kill(old_pid, 0)
+            print(f"❌ 另一个 dream 正在运行 (PID={old_pid})，请等待完成或删除 dream.lock")
+            sys.exit(1)
+        except (OSError, ProcessLookupError):
+            pass  # 旧进程已死
+    lock_path.write_text(str(os.getpid()))
+
     from .config import DreamWeaverConfig
     from .self_play import SelfPlayConfig, SelfPlayEngine
 
@@ -120,6 +132,12 @@ async def cmd_run(args: argparse.Namespace) -> None:
     print(f"\n📝 最终方案摘要:")
     print(f"   {result.final_solution[:500]}...")
     print(f"\n📊 迭代日志: {len(result.logs)} 条")
+
+    # ── 释放锁 ──
+    try:
+        lock_path.unlink(missing_ok=True)
+    except Exception:
+        pass
 
     # Save output file
     if args.output:
