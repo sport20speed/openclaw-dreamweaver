@@ -247,17 +247,30 @@ def cmd_serve(args: argparse.Namespace) -> None:
                 vault_path=vault_path, dream_folder=dream_folder))
             print(f"📓 Obsidian sync: {vault_path}/{dream_folder}")
 
+        from .meta_learner import MetaLearner
+        _meta_learner = MetaLearner(args.db or "dreamweaver.db")
         svc = DreamService(config, llm, judge_llm=judge_llm)
-        router = create_router(svc, repo)
+        router = create_router(svc, repo, meta_learner=_meta_learner)
         app.include_router(router)
+
+        # M1: Meta-collector for learning from past dreams
+        from .meta_collector import MetaCollector
+        _meta_collector = MetaCollector(repo._get_conn())
 
         async def _save(r):
             from datetime import datetime
-            did = datetime.now().strftime("%Y%m%d-") + "dream"
+            import hashlib
+            did = datetime.now().strftime("%Y%m%d-") + hashlib.md5(r.motif.encode()).hexdigest()[:8]
             await repo.save_result(did, r)
             if writer:
                 await writer.write(r)
-                print(f"📓 Synced to Obsidian: {r.motif[:50]}...")
+            # M1: collect meta-episode
+            try:
+                from .self_play import SelfPlayConfig
+                cfg = SelfPlayConfig()
+                _meta_collector.collect(did, r, cfg, motif_source="manual")
+            except Exception:
+                pass
         svc.on_dream_complete = _save
 
         await svc.start()

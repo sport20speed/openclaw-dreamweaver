@@ -26,7 +26,10 @@ logger = logging.getLogger(__name__)
 
 
 def create_router(
-    service: DreamService, repo: Optional[DreamRepository] = None
+    service: DreamService,
+    repo: Optional[DreamRepository] = None,
+    *,
+    meta_learner: Optional[Any] = None,
 ) -> APIRouter:
     """Build the /dream route group wired to a live DreamService and optional repo."""
 
@@ -184,5 +187,22 @@ def create_router(
             raise HTTPException(status_code=404, detail="Dream not found")
         await repo.update_dream(dream_id, status="applied")
         return {"ok": True}
+
+    # ── Meta-Learning (M2) ───────────────────────────────────
+
+    @router.get("/meta/stats")
+    async def get_meta_stats() -> dict:
+        """Return meta-learner statistics (total episodes, feature importance, etc.)."""
+        if meta_learner is None:
+            return {"total_episodes": 0, "model_ready": False, "confidence": 0}
+        return meta_learner.stats()
+
+    @router.get("/meta/features")
+    async def get_features() -> dict:
+        """Return feature importance from the trained model."""
+        if meta_learner is None:
+            return {"features": {}}
+        s = meta_learner.stats()
+        return {"features": s.get("feature_importance", {})}
 
     return router
