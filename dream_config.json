@@ -1,0 +1,7 @@
+{
+  "cloud_enabled": true,
+  "cloud_model": "deepseek-v4-flash",
+  "judge_model": "deepseek-v4-pro",
+  "obsidian_vault_path": "D:/obsidian/obsidian",
+  "dream_folder": "AI梦境专题"
+}

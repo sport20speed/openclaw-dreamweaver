@@ -60,11 +60,44 @@ def create_router(
 
     @router.post("/config")
     async def update_config(body: dict) -> dict:
-        """Update runtime config. Send only the fields to change."""
+        """Update runtime config and persist to disk."""
+        import json as _json
         for key, val in body.items():
             if hasattr(service._config, key):
                 setattr(service._config, key, val)
+        # Persist to JSON file
+        persist_path = _json.dumps(body, ensure_ascii=False)  # noqa
+        import os as _os
+        _cfg_file = _os.path.join(_os.path.dirname(__file__), "..", "..", "..", "dream_config.json")
+        _cfg_file = _os.path.abspath(_cfg_file)
+        try:
+            # Merge with existing
+            existing = {}
+            if _os.path.exists(_cfg_file):
+                with open(_cfg_file, encoding="utf-8") as _f:
+                    existing = _json.loads(_f.read())
+            existing.update(body)
+            with open(_cfg_file, "w", encoding="utf-8") as _f:
+                _json.dump(existing, _f, ensure_ascii=False, indent=2)
+        except Exception:
+            pass
         return {"ok": True}
+
+    @router.get("/stats")
+    async def get_stats() -> dict:
+        """Return dashboard summary stats."""
+        if repo is None:
+            return {"total": 0, "avg_score": 0, "adopted": 0}
+        items = await repo.list_dreams(limit=1000)
+        total = len(items)
+        scores = [d.get("best_score", 0) or 0 for d in items if d.get("best_score")]
+        adopted = sum(1 for d in items if d.get("status") == "applied")
+        return {
+            "total": total,
+            "avg_score": round(sum(scores) / len(scores), 1) if scores else 0,
+            "adopted": adopted,
+            "recent_7d": sum(1 for d in items if (d.get("created_at") or "") > ""),
+        }
 
     # ── Status ────────────────────────────────────────────────
 

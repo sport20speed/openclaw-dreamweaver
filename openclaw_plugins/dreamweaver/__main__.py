@@ -191,8 +191,22 @@ def cmd_serve(args: argparse.Namespace) -> None:
     judge_llm = get_provider(use_local=False, cloud_model=judge_model, api_key=api_key)  # Judge always cloud
     model_label = f"Ollama {local_model}" if use_local else cloud_model
     print(f"🧠 模型: {model_label} | Judge: {judge_model}")
-    print(f"🧠 模型: {model_label}")
+
+    # Load persisted config if available
     config = DreamWeaverConfig()
+    import json as _json
+    _cfg_path = os.path.join(os.path.dirname(__file__), "..", "..", "dream_config.json")
+    _cfg_path = os.path.abspath(_cfg_path)
+    if os.path.exists(_cfg_path):
+        try:
+            with open(_cfg_path, encoding="utf-8") as _f:
+                saved = _json.loads(_f.read())
+            for k, v in saved.items():
+                if hasattr(config, k):
+                    setattr(config, k, v)
+            print(f"📋 载入已保存配置: {_cfg_path}")
+        except Exception:
+            pass
     repo = DreamRepository(args.db or "dreamweaver.db")
 
     # Obsidian writer setup

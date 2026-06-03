@@ -457,14 +457,19 @@ async function setModel(m){
 }
 
 // ── Home ──
-function renderHome(){
+async function renderHome(){
+  // Fetch real stats
+  let stats={total:0,avg_score:0,adopted:0};
+  try{const s=await api('/stats');stats=s}catch(e){}
   $('#viewHome').innerHTML=`<div class="welcome">
     <div class="orb">◐</div>
     <h2>午夜天文台</h2>
     <p class="desc">在输入框中写下你想探索的问题，DreamWeaver 将在后台启动 Genius → Critic → Judge → Refiner → Mutator 五角色自我对弈，如同清晨凝结的露珠，为你产出创新的解决方案。</p>
-    <div class="hint-row">
-      <div class="hint"><div class="k">◯</div><div class="v">凝望夜空</div></div>
-      <div class="hint"><div class="k">◐</div><div class="v">潜入梦境</div></div>
+    <div class="stats" style="display:flex;gap:24px;margin-top:28px">
+      <div class="stat"><div class="num" style="color:var(--moon)">${stats.total}</div><div class="lbl">探索次数</div></div>
+      <div class="stat"><div class="num" style="color:var(--green)">${stats.avg_score}</div><div class="lbl">平均评分</div></div>
+      <div class="stat"><div class="num" style="color:var(--olive)">${stats.adopted}</div><div class="lbl">已采纳</div></div>
+    </div>
       <div class="hint"><div class="k">●</div><div class="v">迎接结晶</div></div>
     </div>
   </div>`
