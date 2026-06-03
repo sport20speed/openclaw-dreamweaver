@@ -30,6 +30,8 @@ def create_router(
     repo: Optional[DreamRepository] = None,
     *,
     meta_learner: Optional[Any] = None,
+    prompt_bandit: Optional[Any] = None,
+    self_model: Optional[Any] = None,
 ) -> APIRouter:
     """Build the /dream route group wired to a live DreamService and optional repo."""
 
@@ -217,5 +219,24 @@ def create_router(
         instincts = mc.distill_instincts()
         conn.close()
         return {"instincts": instincts, "total": len(instincts)}
+
+    # ── M3 Prompt Bandit ──────────────────────────────────────
+
+    @router.get("/prompt/bandit")
+    async def get_bandit_stats() -> dict:
+        """Return prompt bandit statistics for all roles."""
+        if prompt_bandit is None:
+            return {"arms": [], "total": 0}
+        stats = prompt_bandit.stats()
+        return {"arms": stats, "total": len(stats)}
+
+    # ── M4 Self-Model ─────────────────────────────────────────
+
+    @router.get("/self-model")
+    async def get_self_model() -> dict:
+        """Return self-model domain matrix and budget status."""
+        if self_model is None:
+            return {"domains": {}, "today_tokens": 0, "daily_limit": 100000, "budget_pct": 0}
+        return self_model.snapshot()
 
     return router

@@ -248,9 +248,14 @@ def cmd_serve(args: argparse.Namespace) -> None:
             print(f"📓 Obsidian sync: {vault_path}/{dream_folder}")
 
         from .meta_learner import MetaLearner
+        from .prompt_bandit import PromptBandit
+        from .self_model import SelfModel
         _meta_learner = MetaLearner(args.db or "dreamweaver.db")
+        _prompt_bandit = PromptBandit(args.db or "dreamweaver.db")
+        _self_model = SelfModel(args.db or "dreamweaver.db", daily_token_limit=config.daily_token_limit)
         svc = DreamService(config, llm, judge_llm=judge_llm)
-        router = create_router(svc, repo, meta_learner=_meta_learner)
+        router = create_router(svc, repo, meta_learner=_meta_learner,
+                               prompt_bandit=_prompt_bandit, self_model=_self_model)
         app.include_router(router)
 
         # M1: Meta-collector for learning from past dreams
