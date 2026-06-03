@@ -146,6 +146,7 @@ class MetaCollector:
         Confidence increases with supporting evidence count and consistency.
         """
         try:
+            self._conn.row_factory = sqlite3.Row
             rows = self._conn.execute(
                 "SELECT motif_source, AVG(best_score) as avg_score, COUNT(*) as cnt, "
                 "AVG(genius_temp) as avg_genius_temp, AVG(max_iterations) as avg_iters, "
@@ -157,21 +158,21 @@ class MetaCollector:
 
         instincts = []
         for row in rows:
-            cnt = row[1]  # count
-            base_confidence = min(0.9, 0.3 + cnt * 0.03)  # 3 episodes = 0.39, 20 = 0.9
+            cnt = row["cnt"]
+            base_confidence = min(0.9, 0.3 + cnt * 0.03)
 
             instincts.append({
-                "pattern": f"motif_source={row[0]}",
+                "pattern": f"motif_source={row['motif_source']}",
                 "evidence_count": cnt,
                 "confidence": round(base_confidence, 2),
                 "finding": {
-                    "avg_score": round(row["avg_score"], 2),
-                    "avg_genius_temp": round(row["avg_genius_temp"], 2),
-                    "avg_iters": int(row["avg_iters"]),
-                    "avg_duration_s": round(row["avg_duration"], 0),
+                    "avg_score": round(row["avg_score"], 2) if row["avg_score"] else 0,
+                    "avg_genius_temp": round(row["avg_genius_temp"], 2) if row["avg_genius_temp"] else 0.85,
+                    "avg_iters": int(row["avg_iters"]) if row["avg_iters"] else 100,
+                    "avg_duration_s": round(row["avg_duration"], 0) if row["avg_duration"] else 0,
                 },
                 "recommendation": (
-                    f"For {row[0]} motifs (n={cnt}), "
+                    f"For {row['motif_source']} motifs (n={cnt}), "
                     f"avg_score={row['avg_score']:.1f} with genius_temp={row['avg_genius_temp']:.2f}. "
                     f"Confidence: {base_confidence:.2f}"
                 ),
@@ -180,11 +181,12 @@ class MetaCollector:
         # Global stats instinct
         total = self.count()
         if total >= 5:
-            all_scores = self._conn.execute(
-                "SELECT best_score, total_tokens, duration_seconds FROM meta_training_data"
+            self._conn.row_factory = sqlite3.Row
+            all_rows = self._conn.execute(
+                "SELECT best_score, total_tokens FROM meta_training_data"
             ).fetchall()
-            avg_score = round(sum(r[0] for r in all_scores) / len(all_scores), 2)
-            avg_tokens = int(sum(r[1] for r in all_scores) / len(all_scores))
+            avg_score = round(sum(r["best_score"] for r in all_rows) / len(all_rows), 2)
+            avg_tokens = int(sum(r["total_tokens"] for r in all_rows) / len(all_rows))
             instincts.append({
                 "pattern": "global",
                 "evidence_count": total,

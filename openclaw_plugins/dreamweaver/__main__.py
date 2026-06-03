@@ -75,6 +75,24 @@ class DeepSeekProvider:
         return text, tokens
 
 
+
+class LoggingLLMWrapper:
+    """Wraps an LLM provider and records all prompts and responses."""
+    def __init__(self, inner):
+        self._inner = inner
+        self.history: list[dict] = []
+
+    async def generate(self, system_prompt, user_prompt="", **kwargs):
+        text, tokens = await self._inner.generate(system_prompt, user_prompt, **kwargs)
+        self.history.append({
+            "system_prompt": system_prompt,
+            "user_prompt": user_prompt or "",
+            "response": text,
+            "tokens": tokens,
+        })
+        return text, tokens
+
+
 # ── Sub-commands ───────────────────────────────────────────────────
 
 
@@ -108,6 +126,7 @@ async def cmd_run(args: argparse.Namespace) -> None:
     )
 
     llm = DeepSeekProvider(api_key)
+    llm = LoggingLLMWrapper(llm)
     engine = SelfPlayEngine(
         llm,
         SelfPlayConfig(
@@ -141,6 +160,16 @@ async def cmd_run(args: argparse.Namespace) -> None:
 
     # Save output file
     if args.output:
+        # Build conversation log from wrapper history
+        conversation_logs = []
+        for h in llm.history:
+            conversation_logs.append({
+                "system_prompt": h["system_prompt"],
+                "user_prompt": h["user_prompt"],
+                "response": h["response"],
+                "tokens": h["tokens"],
+            })
+
         out = {
             "motif": result.motif,
             "best_score": result.best_score,
@@ -153,9 +182,11 @@ async def cmd_run(args: argparse.Namespace) -> None:
                     "role": l.role,
                     "score": l.score,
                     "tokens_used": l.tokens_used,
+                    "response": l.response,
                 }
                 for l in result.logs
             ],
+            "conversation": conversation_logs,
         }
         Path(args.output).write_text(json.dumps(out, ensure_ascii=False, indent=2))
         print(f"\n💾 结果已保存到 {args.output}")
@@ -274,6 +305,17 @@ def cmd_serve(args: argparse.Namespace) -> None:
                 from .self_play import SelfPlayConfig
                 cfg = SelfPlayConfig()
                 _meta_collector.collect(did, r, cfg, motif_source="manual")
+            except Exception:
+                pass
+            # M4: update self-model
+            try:
+                total_tokens = sum(log.tokens_used for log in r.logs)
+                _self_model.record(r.motif, r.best_score, total_tokens)
+            except Exception:
+                pass
+            # M2: trigger incremental training
+            try:
+                _meta_learner.recommend_params(r.motif)
             except Exception:
                 pass
         svc.on_dream_complete = _save
