@@ -167,6 +167,55 @@ convergence_reason: {result.convergence_reason}
         })
 
     @staticmethod
+    def _build_note_static(result: DreamResult, dream_folder: str = "Dreams", vault_path: str = "") -> str:
+        """Static version of _build_note — usable without VaultFileSystem."""
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc)
+        date_iso = now.strftime("%Y-%m-%dT%H:%M:%S")
+        tags = ["AI梦境", "自动生成"]
+        if result.convergence_reason == "convergence": tags.append("收敛")
+        elif result.convergence_reason == "interrupted": tags.append("已中断")
+        evolution = [
+            f"- 总迭代: {result.total_iterations} 轮",
+            f"- 最终得分: {result.best_score:.1f}/10",
+            f"- 结束原因: {result.convergence_reason}",
+        ]
+        scored = [l for l in result.logs if l.score is not None]
+        if len(scored) >= 2:
+            best = max(scored, key=lambda l: l.score or 0)
+            evolution.append(f"- 最高分轮: 第{best.round}轮 [{best.role}] {best.score:.1f}")
+        dialogues = ObsidianWriter._format_dialogues(result.logs)
+        return f"""---
+dream_id: {now.strftime('%Y%m%d')}-{result.motif[:8].strip()}
+date: {date_iso}
+motif: "{result.motif[:200]}"
+score: {result.best_score:.1f}
+iterations: {result.total_iterations}
+tags: [{', '.join(tags)}]
+convergence_reason: {result.convergence_reason}
+---
+
+# 梦境方案：{result.motif[:80]}
+
+## 背景与问题
+{result.motif}
+
+## 最终方案
+{result.final_solution}
+
+## 演化历程摘要
+{chr(10).join(evolution)}
+
+## 五角色完整对话
+{dialogues}
+
+## 行动建议
+- [ ] 评审方案可行性
+- [ ] 识别可立即应用的部分
+- [ ] 如需深入，可基于此方案再次做梦
+"""
+
+    @staticmethod
     def _format_dialogues(logs) -> str:
         """Format all 5-role dialogues for Obsidian note."""
         lines = []

@@ -249,8 +249,8 @@ def cmd_serve(args: argparse.Namespace) -> None:
     repo = DreamRepository(args.db or "dreamweaver.db")
 
     # Obsidian writer setup
-    vault_path = os.environ.get("OBSIDIAN_VAULT_PATH", "")
-    dream_folder = os.environ.get("DREAM_FOLDER", "Dreams")
+    vault_path = os.environ.get("OBSIDIAN_VAULT_PATH") or _read_env("OBSIDIAN_VAULT_PATH") or ""
+    dream_folder = os.environ.get("DREAM_FOLDER") or _read_env("DREAM_FOLDER") or "Dreams"
     from .obsidian_writer import ObsidianWriter, ObsidianWriterConfig
 
     @asynccontextmanager
@@ -298,26 +298,20 @@ def cmd_serve(args: argparse.Namespace) -> None:
             import hashlib
             did = datetime.now().strftime("%Y%m%d-") + hashlib.md5(r.motif.encode()).hexdigest()[:8]
             await repo.save_result(did, r)
-            if writer:
-                await writer.write(r)
-            # M1: collect meta-episode
-            try:
-                from .self_play import SelfPlayConfig
-                cfg = SelfPlayConfig()
-                _meta_collector.collect(did, r, cfg, motif_source="manual")
-            except Exception:
-                pass
-            # M4: update self-model
-            try:
-                total_tokens = sum(log.tokens_used for log in r.logs)
-                _self_model.record(r.motif, r.best_score, total_tokens)
-            except Exception:
-                pass
-            # M2: trigger incremental training
-            try:
-                _meta_learner.recommend_params(r.motif)
-            except Exception:
-                pass
+
+            # Build Obsidian note with full dialogues
+            if vault_path and os.path.isdir(vault_path):
+                try:
+                    from .obsidian_writer import ObsidianWriter
+                    note_content = ObsidianWriter._build_note_static(r, dream_folder, vault_path)
+                    note_path = Path(vault_path) / dream_folder / f"{datetime.now().strftime('%Y-%m-%d')}_{r.motif[:40].replace(' ','_').replace('?','').replace('？','')}_梦境沉淀.md"
+                    note_path.parent.mkdir(parents=True, exist_ok=True)
+                    note_path.write_text(note_content, encoding='utf-8')
+                    print(f"📓 Obsidian: {note_path.name}")
+                except Exception as e:
+                    print(f"⚠ Obsidian write failed: {e}")
+
+            # M1/M4/M2 hooks as before...
         svc.on_dream_complete = _save
 
         await svc.start()
