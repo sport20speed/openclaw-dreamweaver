@@ -152,6 +152,9 @@ convergence_reason: {result.convergence_reason}
 ## 演化历程摘要
 {chr(10).join(evolution_lines)}
 
+## 五角色完整对话
+{self._format_dialogues(result.logs)}
+
 {related_section}## 行动建议
 - [ ] 评审方案可行性
 - [ ] 识别可立即应用的部分
@@ -162,6 +165,29 @@ convergence_reason: {result.convergence_reason}
             "dream_id": dream_id, "date": date_iso, "motif": result.motif,
             "score": result.best_score, "iterations": result.total_iterations, "tags": tags,
         })
+
+    @staticmethod
+    def _format_dialogues(logs) -> str:
+        """Format all 5-role dialogues for Obsidian note."""
+        lines = []
+        grouped = {}
+        for log in logs:
+            rnd = log.round
+            if rnd not in grouped:
+                grouped[rnd] = []
+            grouped[rnd].append(log)
+
+        for rnd in sorted(grouped.keys()):
+            lines.append(f"### 第 {rnd} 轮")
+            for log in grouped[rnd]:
+                lines.append(f"\n#### {log.role.upper()}")
+                if log.prompt:
+                    lines.append(f"\n**System Prompt:**\n```\n{log.prompt[:500]}\n```")
+                lines.append(f"\n**Response:**\n{log.response[:2000]}")
+                if log.score is not None:
+                    lines.append(f"\n*Score: {log.score} · Tokens: {log.tokens_used}*")
+            lines.append("")
+        return "\n".join(lines) if lines else "（无对话记录）"
 
     async def _ensure_link_target(self, target: str) -> None:
         if not self._fs:
