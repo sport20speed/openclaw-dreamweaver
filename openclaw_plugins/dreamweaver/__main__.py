@@ -299,15 +299,17 @@ def cmd_serve(args: argparse.Namespace) -> None:
             did = datetime.now().strftime("%Y%m%d-") + hashlib.md5(r.motif.encode()).hexdigest()[:8]
             await repo.save_result(did, r)
 
-            # Build Obsidian note with full dialogues
+            # Build Obsidian note using khazix-writer + 刘润 skill formats
             if vault_path and os.path.isdir(vault_path):
                 try:
                     from .obsidian_writer import ObsidianWriter
-                    note_content = ObsidianWriter._build_note_static(r, dream_folder, vault_path)
+                    from .skill_formatter import SkillFormatter
+                    dialogues_text = ObsidianWriter._format_dialogues(r.logs)
+                    note_content = SkillFormatter.get_full_note(r, dialogues_text)
                     note_path = Path(vault_path) / dream_folder / f"{datetime.now().strftime('%Y-%m-%d')}_{r.motif[:40].replace(' ','_').replace('?','').replace('？','')}_梦境沉淀.md"
                     note_path.parent.mkdir(parents=True, exist_ok=True)
                     note_path.write_text(note_content, encoding='utf-8')
-                    print(f"📓 Obsidian: {note_path.name}")
+                    print(f"📓 Obsidian [khazix+刘润]: {note_path.name}")
                 except Exception as e:
                     print(f"⚠ Obsidian write failed: {e}")
 
