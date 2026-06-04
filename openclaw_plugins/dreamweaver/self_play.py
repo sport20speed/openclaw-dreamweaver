@@ -154,6 +154,18 @@ class SelfPlayEngine:
             logs.append(self._to_log(r_out, round=iteration))
             s_current = Solution(content=r_out.content, round=iteration, role="refiner")
 
+            # Entropy detection: if 2 consecutive rounds have >80% text similarity, force mutation
+            sim = self._text_similarity(s_best.content, r_out.content)
+            if sim > 0.80:
+                self._stale_count = getattr(self, '_stale_count', 0) + 1
+            else:
+                self._stale_count = 0
+            if self._stale_count >= 2:
+                logger.info("Entropy detection: 2 consecutive stale rounds (sim=%.2f), forcing mutation", sim)
+                # Force mutation by modifying iteration counter
+                force_iteration = iteration + (self._config.mutation_interval - (iteration % self._config.mutation_interval))
+                self._stale_count = 0
+
             # Step 4: Mutator (every N rounds)
             if iteration % self._config.mutation_interval == 0:
                 m_out = await mutator.execute(DreamContext(
@@ -189,6 +201,16 @@ class SelfPlayEngine:
     def _to_log(output: RoleOutput, round: int) -> IterationLog:
         return IterationLog(round=round, role=output.role, prompt=output.prompt or "", response=output.content,
                             score=output.score, tokens_used=output.tokens_used)
+
+    @staticmethod
+    def _text_similarity(a: str, b: str) -> float:
+        """Jaccard similarity on word sets for entropy detection."""
+        import re
+        words_a = set(re.findall(r"\w+", a.lower()))
+        words_b = set(re.findall(r"\w+", b.lower()))
+        if not words_a or not words_b:
+            return 0.0
+        return len(words_a & words_b) / len(words_a | words_b)
 
     @staticmethod
     def _finish(motif: str, best: Solution, score: float, iterations: int,
